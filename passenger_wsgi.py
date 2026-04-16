@@ -39,4 +39,10 @@ if _venv.exists():
                         f"python{sys.version_info.major}.{sys.version_info.minor}" /
                         "site-packages"))
 
-from app import application  # noqa: E402  Flask WSGIアプリをエクスポート
+from app import application as _flask_app  # noqa: E402
+
+
+def application(environ, start_response):
+    """/keiri プレフィックスをWSGIに伝えてurl_for()が正しいURLを生成するようにする。"""
+    environ["SCRIPT_NAME"] = "/keiri"
+    return _flask_app(environ, start_response)
