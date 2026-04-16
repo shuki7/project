@@ -26,9 +26,10 @@ from core.database import (
     update_revenue, delete_revenue,
     # サマリー
     monthly_summary, sum_expenses, sum_revenue,
-    # 立替え・検索
+    # 立替え・検索・直近
     get_tatekae_expenses, settle_expense,
     search_expenses, search_revenue,
+    get_recent_expenses,
 )
 
 web = Blueprint("web", __name__, url_prefix="/keiri")
@@ -96,6 +97,8 @@ def dashboard():
     summary = monthly_summary(year)
     tatekae_list = get_tatekae_expenses()
     tatekae_total = sum(e["amount"] for e in tatekae_list)
+    recent_expenses = get_recent_expenses(30)
+    month_expenses = get_expenses(year, month)
 
     return render_template(
         "dashboard.html",
@@ -110,6 +113,8 @@ def dashboard():
         summary=summary,
         tatekae_list=tatekae_list,
         tatekae_total=tatekae_total,
+        recent_expenses=recent_expenses,
+        month_expenses=month_expenses,
         page="dashboard",
     )
 

@@ -386,6 +386,19 @@ def get_tatekae_expenses() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def get_recent_expenses(limit: int = 20) -> list[dict]:
+    """直近の経費を返す（日付降順）。"""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT e.*, c.name as category_name FROM expenses e "
+        "LEFT JOIN categories c ON e.category_id = c.id "
+        "ORDER BY e.date DESC, e.created_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def settle_expense(expense_id: str):
     """立替えを精算済み（TRANSFER）に変更する。"""
     with transaction() as conn:

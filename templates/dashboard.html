@@ -58,28 +58,42 @@
   </div>
 </div>
 
-<!-- 立替え未精算リスト -->
-{% if tatekae_list %}
-<div style="margin-bottom:1.5rem;">
-  <h2 style="font-size:1rem; font-weight:700; color:#c1121f; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">
-    ⚠ 立替え 未精算（{{ tatekae_list|length }}件 / {{ fmt_idr(tatekae_total) }}）
-  </h2>
-  <div class="card" style="border-left: 4px solid #c1121f; padding:1rem;">
+<!-- タブ切り替えパネル -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
+  <!-- タブボタン -->
+  <div id="dash-tabs" style="display:flex; background:#16213e; border-bottom:2px solid #0f3460;">
+    <button class="dash-tab active" data-tab="tatekae" onclick="switchTab('tatekae', this)"
+      style="padding:.7rem 1.2rem; background:none; border:none; color:#e2c97e; font-weight:700; font-size:.9rem; cursor:pointer; border-bottom:3px solid #e2c97e;">
+      ⚠ 立替え
+      {% if tatekae_list %}
+        <span style="background:#c1121f; color:#fff; border-radius:10px; padding:.1rem .45rem; font-size:.75rem; margin-left:.3rem;">{{ tatekae_list|length }}</span>
+      {% endif %}
+    </button>
+    <button class="dash-tab" data-tab="recent" onclick="switchTab('recent', this)"
+      style="padding:.7rem 1.2rem; background:none; border:none; color:#c5cae9; font-weight:600; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent;">
+      直近10件
+    </button>
+    <button class="dash-tab" data-tab="monthly" onclick="switchTab('monthly', this)"
+      style="padding:.7rem 1.2rem; background:none; border:none; color:#c5cae9; font-weight:600; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent;">
+      今月の支出 <span style="font-size:.8rem; opacity:.7;">{{ year }}/{{ '%02d'|format(month) }}</span>
+    </button>
+  </div>
+
+  <!-- 立替えタブ -->
+  <div id="tab-tatekae" class="tab-panel" style="padding:1rem;">
+    {% if tatekae_list %}
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem; flex-wrap:wrap; gap:.5rem;">
+      <span style="font-size:.9rem; color:#555;">未精算合計：<strong class="negative">{{ fmt_idr(tatekae_total) }}</strong>（{{ tatekae_list|length }}件）</span>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>日付</th>
-            <th>名目</th>
-            <th>支払先</th>
-            <th style="text-align:right;">金額</th>
-            <th>勘定科目</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
+        <thead><tr>
+          <th>日付</th><th>名目</th><th>支払先</th>
+          <th style="text-align:right;">金額</th><th>勘定科目</th><th></th>
+        </tr></thead>
+        <tbody id="tatekae-rows">
           {% for e in tatekae_list %}
-          <tr>
+          <tr class="tatekae-row{% if loop.index > 10 %} row-extra" style="display:none{% endif %}">
             <td style="white-space:nowrap;">{{ e.date }}</td>
             <td>{{ e.name }}</td>
             <td class="text-muted">{{ e.payee or '—' }}</td>
@@ -96,9 +110,114 @@
         </tbody>
       </table>
     </div>
+    {% if tatekae_list|length > 10 %}
+    <button onclick="toggleExtra('tatekae')" id="btn-tatekae"
+      style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
+      ▼ もっと見る（{{ tatekae_list|length - 10 }}件）
+    </button>
+    {% endif %}
+    {% else %}
+    <p style="color:#888; padding:.5rem 0; text-align:center;">立替えはありません ✓</p>
+    {% endif %}
+  </div>
+
+  <!-- 直近10件タブ -->
+  <div id="tab-recent" class="tab-panel" style="padding:1rem; display:none;">
+    {% if recent_expenses %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>日付</th><th>名目</th><th>支払先</th>
+          <th style="text-align:right;">金額</th><th>支払方法</th><th></th>
+        </tr></thead>
+        <tbody>
+          {% for e in recent_expenses %}
+          <tr class="{% if loop.index > 10 %}row-extra" style="display:none{% endif %}">
+            <td style="white-space:nowrap;">{{ e.date }}</td>
+            <td>{{ e.name }}</td>
+            <td class="text-muted">{{ e.payee or '—' }}</td>
+            <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
+            <td>{% if e.payment_method == '立替え' %}<span style="color:#c1121f;font-weight:600;">立替え</span>{% else %}{{ e.payment_method or '—' }}{% endif %}</td>
+            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">編集</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if recent_expenses|length > 10 %}
+    <button onclick="toggleExtra('recent')" id="btn-recent"
+      style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
+      ▼ もっと見る（{{ recent_expenses|length - 10 }}件）
+    </button>
+    {% endif %}
+    {% else %}
+    <p style="color:#888; padding:.5rem 0; text-align:center;">経費データがありません</p>
+    {% endif %}
+  </div>
+
+  <!-- 今月の支出タブ -->
+  <div id="tab-monthly" class="tab-panel" style="padding:1rem; display:none;">
+    {% if month_expenses %}
+    <div style="margin-bottom:.75rem;">
+      <span style="font-size:.9rem; color:#555;">
+        合計：<strong class="negative">{{ fmt_idr(month_expenses | sum(attribute='amount')) }}</strong>（{{ month_expenses|length }}件）
+      </span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>日付</th><th>名目</th><th>支払先</th>
+          <th style="text-align:right;">金額</th><th>勘定科目</th><th></th>
+        </tr></thead>
+        <tbody>
+          {% for e in month_expenses %}
+          <tr class="{% if loop.index > 10 %}row-extra" style="display:none{% endif %}">
+            <td style="white-space:nowrap;">{{ e.date }}</td>
+            <td>{{ e.name }}</td>
+            <td class="text-muted">{{ e.payee or '—' }}</td>
+            <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
+            <td class="text-muted">{{ e.category_name or '—' }}</td>
+            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">編集</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if month_expenses|length > 10 %}
+    <button onclick="toggleExtra('monthly')" id="btn-monthly"
+      style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
+      ▼ もっと見る（{{ month_expenses|length - 10 }}件）
+    </button>
+    {% endif %}
+    {% else %}
+    <p style="color:#888; padding:.5rem 0; text-align:center;">今月の支出はありません</p>
+    {% endif %}
   </div>
 </div>
-{% endif %}
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.dash-tab').forEach(b => {
+    b.style.color = '#c5cae9';
+    b.style.borderBottomColor = 'transparent';
+  });
+  document.getElementById('tab-' + name).style.display = 'block';
+  btn.style.color = '#e2c97e';
+  btn.style.borderBottomColor = '#e2c97e';
+}
+
+function toggleExtra(name) {
+  const btn = document.getElementById('btn-' + name);
+  const panel = document.getElementById('tab-' + name);
+  const extras = panel.querySelectorAll('.row-extra');
+  const isHidden = extras[0] && extras[0].style.display === 'none';
+  extras.forEach(r => r.style.display = isHidden ? '' : 'none');
+  btn.textContent = isHidden
+    ? '▲ 閉じる'
+    : '▼ もっと見る（' + extras.length + '件）';
+}
+</script>
 
 <!-- 月次テーブル -->
 <div class="card">
