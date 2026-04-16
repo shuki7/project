@@ -28,7 +28,7 @@ from core.database import (
     monthly_summary, sum_expenses, sum_revenue,
 )
 
-web = Blueprint("web", __name__, url_prefix="")
+web = Blueprint("web", __name__, url_prefix="/keiri")
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 PAYMENT_METHODS = ["CASH", "TRANSFER", "DEBIT", "立替え"]
