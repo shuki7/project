@@ -92,7 +92,7 @@ def init_db():
     """データベースとテーブルを初期化する。"""
     with transaction() as conn:
         conn.executescript(SCHEMA_SQL)
-    print(f"[DB] 初期化完了: {DB_PATH}")
+    print(f"[DB] initialized: {DB_PATH}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
