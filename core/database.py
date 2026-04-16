@@ -371,3 +371,53 @@ def get_categories_with_count() -> list[dict]:
     """).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_tatekae_expenses() -> list[dict]:
+    """payment_method = '立替え' の未精算経費を返す（日付降順）。"""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT e.*, c.name as category_name FROM expenses e "
+        "LEFT JOIN categories c ON e.category_id = c.id "
+        "WHERE e.payment_method = ? ORDER BY e.date DESC",
+        ("立替え",),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def settle_expense(expense_id: str):
+    """立替えを精算済み（TRANSFER）に変更する。"""
+    with transaction() as conn:
+        conn.execute(
+            "UPDATE expenses SET payment_method = 'TRANSFER' WHERE id = ?",
+            (expense_id,),
+        )
+
+
+def search_expenses(q: str) -> list[dict]:
+    """経費をキーワード検索する（名目・支払先・メモ・カテゴリ）。"""
+    like = f"%{q}%"
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT e.*, c.name as category_name FROM expenses e "
+        "LEFT JOIN categories c ON e.category_id = c.id "
+        "WHERE e.name LIKE ? OR e.payee LIKE ? OR e.memo LIKE ? OR c.name LIKE ? "
+        "ORDER BY e.date DESC LIMIT 200",
+        (like, like, like, like),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def search_revenue(q: str) -> list[dict]:
+    """収入をキーワード検索する（名前・生徒名・メモ）。"""
+    like = f"%{q}%"
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM revenue WHERE name LIKE ? OR student_name LIKE ? OR memo LIKE ? "
+        "ORDER BY date DESC LIMIT 200",
+        (like, like, like),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

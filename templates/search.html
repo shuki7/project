@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}検索: {{ q }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🔍 検索結果: <span style="color:#16213e;">{{ q }}</span></h1>
+</div>
+
+{% if not q %}
+<div class="card" style="text-align:center; color:#888; padding:3rem;">
+  ナビバーの検索欄からキーワードを入力してください。
+</div>
+{% else %}
+
+<!-- 経費 -->
+<div class="card">
+  <div class="page-header" style="margin-bottom:.75rem;">
+    <h2 style="font-size:1rem; font-weight:700; color:#555;">経費（{{ expenses|length }}件）</h2>
+    {% if expenses %}
+    <span class="negative" style="font-weight:700;">{{ fmt_idr(total_expenses) }}</span>
+    {% endif %}
+  </div>
+  {% if expenses %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>名目</th>
+          <th>支払先</th>
+          <th style="text-align:right;">金額</th>
+          <th>勘定科目</th>
+          <th>支払方法</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in expenses %}
+        <tr>
+          <td style="white-space:nowrap;">{{ e.date }}</td>
+          <td>{{ e.name }}</td>
+          <td class="text-muted">{{ e.payee or '—' }}</td>
+          <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
+          <td class="text-muted">{{ e.category_name or '—' }}</td>
+          <td>
+            {% if e.payment_method == '立替え' %}
+              <span style="color:#c1121f; font-weight:600;">立替え</span>
+            {% else %}
+              {{ e.payment_method or '—' }}
+            {% endif %}
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit">編集</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted" style="padding:.5rem 0;">該当なし</p>
+  {% endif %}
+</div>
+
+<!-- 収入 -->
+<div class="card">
+  <div class="page-header" style="margin-bottom:.75rem;">
+    <h2 style="font-size:1rem; font-weight:700; color:#555;">収入（{{ revenues|length }}件）</h2>
+    {% if revenues %}
+    <span class="positive" style="font-weight:700;">{{ fmt_idr(total_revenues) }}</span>
+    {% endif %}
+  </div>
+  {% if revenues %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>名前</th>
+          <th>生徒名</th>
+          <th style="text-align:right;">金額</th>
+          <th>メモ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in revenues %}
+        <tr>
+          <td style="white-space:nowrap;">{{ r.date }}</td>
+          <td>{{ r.name }}</td>
+          <td class="text-muted">{{ r.student_name or '—' }}</td>
+          <td class="amount positive">{{ fmt_idr(r.amount) }}</td>
+          <td class="text-muted">{{ r.memo or '—' }}</td>
+          <td class="actions">
+            <a href="{{ url_for('web.revenue_edit', revenue_id=r.id) }}" class="btn btn-edit">編集</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted" style="padding:.5rem 0;">該当なし</p>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

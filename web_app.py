@@ -26,6 +26,9 @@ from core.database import (
     update_revenue, delete_revenue,
     # サマリー
     monthly_summary, sum_expenses, sum_revenue,
+    # 立替え・検索
+    get_tatekae_expenses, settle_expense,
+    search_expenses, search_revenue,
 )
 
 web = Blueprint("web", __name__, url_prefix="/keiri")
@@ -91,6 +94,8 @@ def dashboard():
     annual_profit = annual_rev - annual_exp
 
     summary = monthly_summary(year)
+    tatekae_list = get_tatekae_expenses()
+    tatekae_total = sum(e["amount"] for e in tatekae_list)
 
     return render_template(
         "dashboard.html",
@@ -103,7 +108,39 @@ def dashboard():
         annual_exp=annual_exp,
         annual_profit=annual_profit,
         summary=summary,
+        tatekae_list=tatekae_list,
+        tatekae_total=tatekae_total,
         page="dashboard",
+    )
+
+
+@web.route("/expenses/<expense_id>/settle", methods=["POST"])
+def expenses_settle(expense_id):
+    """立替えを精算済み（TRANSFER）にする。"""
+    try:
+        settle_expense(expense_id)
+        flash("精算済みに変更しました。", "success")
+    except Exception as e:
+        flash(f"エラー: {e}", "error")
+    return redirect(url_for("web.dashboard"))
+
+
+@web.route("/search")
+def search():
+    q = request.args.get("q", "").strip()
+    expenses = []
+    revenues = []
+    if q:
+        expenses = search_expenses(q)
+        revenues = search_revenue(q)
+    return render_template(
+        "search.html",
+        q=q,
+        expenses=expenses,
+        revenues=revenues,
+        total_expenses=sum(e["amount"] for e in expenses),
+        total_revenues=sum(r["amount"] for r in revenues),
+        page="search",
     )
 
 

@@ -59,6 +59,38 @@
       color: #e2c97e;
       border-bottom-color: #e2c97e;
     }
+    .nav-search {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .nav-search input[type="search"] {
+      width: 200px;
+      padding: .35rem .7rem;
+      border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      font-size: .88rem;
+    }
+    .nav-search input[type="search"]::placeholder { color: rgba(255,255,255,.5); }
+    .nav-search input[type="search"]:focus {
+      outline: none;
+      border-color: #e2c97e;
+      background: rgba(255,255,255,.15);
+    }
+    .nav-search button {
+      background: #e2c97e;
+      color: #16213e;
+      border: none;
+      border-radius: 20px;
+      padding: .35rem .8rem;
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .nav-search button:hover { opacity: .85; }
 
     /* ── コンテナ ── */
     .container {
@@ -266,6 +298,10 @@
       <li><a href="{{ url_for('web.revenue_list') }}" {% if page == 'revenue' %}class="active"{% endif %}>収入</a></li>
       <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories' %}class="active"{% endif %}>勘定科目</a></li>
     </ul>
+    <form class="nav-search" method="get" action="{{ url_for('web.search') }}">
+      <input type="search" name="q" placeholder="検索..." value="{{ request.args.get('q', '') }}">
+      <button type="submit">検索</button>
+    </form>
   </nav>
 
   <div class="container">

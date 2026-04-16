@@ -58,6 +58,48 @@
   </div>
 </div>
 
+<!-- 立替え未精算リスト -->
+{% if tatekae_list %}
+<div style="margin-bottom:1.5rem;">
+  <h2 style="font-size:1rem; font-weight:700; color:#c1121f; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">
+    ⚠ 立替え 未精算（{{ tatekae_list|length }}件 / {{ fmt_idr(tatekae_total) }}）
+  </h2>
+  <div class="card" style="border-left: 4px solid #c1121f; padding:1rem;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>名目</th>
+            <th>支払先</th>
+            <th style="text-align:right;">金額</th>
+            <th>勘定科目</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in tatekae_list %}
+          <tr>
+            <td style="white-space:nowrap;">{{ e.date }}</td>
+            <td>{{ e.name }}</td>
+            <td class="text-muted">{{ e.payee or '—' }}</td>
+            <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
+            <td class="text-muted">{{ e.category_name or '—' }}</td>
+            <td class="actions">
+              <form method="post" action="{{ url_for('web.expenses_settle', expense_id=e.id) }}"
+                    onsubmit="return confirm('「{{ e.name }}」を精算済み（TRANSFER）に変更しますか？')">
+                <button type="submit" class="btn btn-success btn-sm">✓ 精算済み</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- 月次テーブル -->
 <div class="card">
   <div class="table-wrap">
