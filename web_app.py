@@ -2,6 +2,9 @@
 Flask Blueprint — 家計簿 Web CRUD インターフェース
 """
 
+import csv
+import io
+import json
 import os
 import uuid
 from datetime import datetime
@@ -10,10 +13,14 @@ from pathlib import Path
 from flask import (
     Blueprint, render_template, request, redirect,
     url_for, flash, send_from_directory, abort,
+    session, Response, make_response,
 )
 from werkzeug.utils import secure_filename
 
-from config import RECEIPTS_DIR, fmt_idr, COMPANY_NAME
+from config import (
+    RECEIPTS_DIR, fmt_idr, COMPANY_NAME,
+    LOGIN_PASSWORD, COURSE_KEYWORDS, REPORTS_DIR,
+)
 from core.database import (
     # カテゴリ
     get_all_categories, get_category_by_id, upsert_category,
@@ -30,9 +37,45 @@ from core.database import (
     get_tatekae_expenses, settle_expense,
     search_expenses, search_revenue,
     get_recent_expenses,
+    # 新機能
+    get_category_totals, get_prev_month_totals,
+    get_revenue_ranking, get_recurring_summary,
+    count_course_students, get_financial_statement,
+    get_budget_progress, get_budgets, set_budget,
 )
 
 web = Blueprint("web", __name__, url_prefix="/keiri")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 認証
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.before_request
+def check_auth():
+    open_endpoints = {"web.login", "web.logout"}
+    if request.endpoint in open_endpoints:
+        return
+    if not session.get("logged_in"):
+        return redirect(url_for("web.login", next=request.url))
+
+
+@web.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        if request.form.get("password") == LOGIN_PASSWORD:
+            session["logged_in"] = True
+            session.permanent = True
+            return redirect(request.args.get("next") or url_for("web.dashboard"))
+        flash("パスワードが違います。", "error")
+    return render_template("login.html")
+
+
+@web.route("/logout")
+def logout():
+    session.clear()
+    flash("ログアウトしました。", "success")
+    return redirect(url_for("web.login"))
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 PAYMENT_METHODS = ["CASH", "TRANSFER", "DEBIT", "立替え"]
@@ -100,21 +143,51 @@ def dashboard():
     recent_expenses = get_recent_expenses(30)
     month_expenses = get_expenses(year, month)
 
+    # 前月比
+    prev = get_prev_month_totals(year, month)
+
+    # カテゴリ別（ドーナツチャート用）
+    cat_totals = get_category_totals(year, month)
+    chart_data = json.dumps({
+        "labels": [f"{r['month']}月" for r in summary],
+        "revenue": [r["revenue"] for r in summary],
+        "expenses": [r["expenses"] for r in summary],
+        "profit": [r["profit"] for r in summary],
+    })
+    donut_data = json.dumps({
+        "labels": [c["category"] for c in cat_totals[:10]],
+        "values": [c["total"] for c in cat_totals[:10]],
+    })
+
+    # コース別人数
+    course_counts = {
+        name: count_course_students(year, month, kw)
+        for name, kw in COURSE_KEYWORDS.items()
+    }
+
+    # 定期支出
+    recurring = get_recurring_summary(year, month)
+
+    # 収入ランキング（今月上位5）
+    ranking = get_revenue_ranking(year, month, limit=5)
+
+    # 予算進捗
+    budget_progress = get_budget_progress(year, month)
+
     return render_template(
         "dashboard.html",
-        year=year,
-        month=month,
-        monthly_rev=monthly_rev,
-        monthly_exp=monthly_exp,
-        monthly_profit=monthly_profit,
-        annual_rev=annual_rev,
-        annual_exp=annual_exp,
-        annual_profit=annual_profit,
+        year=year, month=month,
+        monthly_rev=monthly_rev, monthly_exp=monthly_exp, monthly_profit=monthly_profit,
+        annual_rev=annual_rev, annual_exp=annual_exp, annual_profit=annual_profit,
         summary=summary,
-        tatekae_list=tatekae_list,
-        tatekae_total=tatekae_total,
-        recent_expenses=recent_expenses,
-        month_expenses=month_expenses,
+        tatekae_list=tatekae_list, tatekae_total=tatekae_total,
+        recent_expenses=recent_expenses, month_expenses=month_expenses,
+        prev=prev,
+        chart_data=chart_data, donut_data=donut_data,
+        course_counts=course_counts,
+        recurring=recurring,
+        ranking=ranking,
+        budget_progress=budget_progress,
         page="dashboard",
     )
 
@@ -583,6 +656,113 @@ def categories_delete(cat_id):
     except Exception as e:
         flash(f"削除エラー: {e}", "error")
     return redirect(url_for("web.categories_list"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 決算書
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.route("/financial")
+def financial_report():
+    now = datetime.now()
+    year = int(request.args.get("year", now.year))
+    end_date = request.args.get("end_date", now.strftime("%Y-%m-%d"))
+    data = get_financial_statement(year, end_date)
+    return render_template("financial_report.html", data=data,
+                           year=year, end_date=end_date, page="financial")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 予算管理
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.route("/budget", methods=["GET", "POST"])
+def budget():
+    now = datetime.now()
+    year = int(request.args.get("year", now.year))
+    month = int(request.args.get("month", now.month))
+    if request.method == "POST":
+        year = int(request.form.get("year", now.year))
+        month = int(request.form.get("month", now.month))
+        for key, val in request.form.items():
+            if key.startswith("budget_"):
+                cat_id = key[7:]
+                try:
+                    amount = float(val) if val.strip() else 0.0
+                    set_budget(cat_id, year, month, amount)
+                except ValueError:
+                    pass
+        flash("予算を保存しました。", "success")
+        return redirect(url_for("web.budget", year=year, month=month))
+    categories = get_all_categories()
+    budgets = {b["category_id"]: b["amount"] for b in get_budgets(year, month)}
+    progress = get_budget_progress(year, month)
+    return render_template("budget.html", categories=categories, budgets=budgets,
+                           progress=progress, year=year, month=month, page="budget")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSVエクスポート
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.route("/export/expenses.csv")
+def export_expenses_csv():
+    now = datetime.now()
+    year = int(request.args.get("year", now.year))
+    month_raw = request.args.get("month", "")
+    month = int(month_raw) if month_raw.isdigit() else None
+    rows = get_expenses(year, month)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["日付", "名目", "金額(IDR)", "勘定科目", "支払方法", "支払先", "メモ", "定期"])
+    for r in rows:
+        w.writerow([r["date"], r["name"], r["amount"], r.get("category_name", ""),
+                    r["payment_method"] or "", r["payee"] or "", r["memo"] or "",
+                    "定期" if r["is_recurring"] else ""])
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8-sig"
+    resp.headers["Content-Disposition"] = f'attachment; filename="expenses_{year}.csv"'
+    return resp
+
+
+@web.route("/export/revenue.csv")
+def export_revenue_csv():
+    now = datetime.now()
+    year = int(request.args.get("year", now.year))
+    month_raw = request.args.get("month", "")
+    month = int(month_raw) if month_raw.isdigit() else None
+    rows = get_revenue(year, month)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["日付", "名前", "金額(IDR)", "生徒名", "メモ"])
+    for r in rows:
+        w.writerow([r["date"], r["name"], r["amount"],
+                    r["student_name"] or "", r["memo"] or ""])
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8-sig"
+    resp.headers["Content-Disposition"] = f'attachment; filename="revenue_{year}.csv"'
+    return resp
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PDFレポート
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.route("/pdf/<int:year>")
+@web.route("/pdf/<int:year>/<int:month>")
+def pdf_report(year, month=None):
+    try:
+        from reports.pdf_export import monthly_report, annual_report
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        if month:
+            path = monthly_report(year, month)
+        else:
+            path = annual_report(year)
+        return send_from_directory(str(path.parent), path.name,
+                                   as_attachment=True, mimetype="application/pdf")
+    except Exception as e:
+        flash(f"PDF生成エラー: {e}", "error")
+        return redirect(url_for("web.financial_report", year=year))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

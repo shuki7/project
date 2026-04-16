@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}予算管理 — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>💰 月次予算管理</h1>
+</div>
+
+<!-- 月選択 -->
+<form method="get" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.2rem;">
+  <label style="margin:0;">年度：
+    <select name="year" style="width:auto; margin-left:.3rem;">
+      {% for y in [2025, 2026, 2027] %}
+      <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label style="margin:0;">月：
+    <select name="month" style="width:auto; margin-left:.3rem;">
+      {% for m in range(1, 13) %}
+      <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}月</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="btn btn-primary btn-sm">表示</button>
+</form>
+
+<!-- 進捗バー（設定済みのもの） -->
+{% if progress %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-title">{{ year }}年{{ month }}月 予算進捗</div>
+  {% for p in progress if p.budget > 0 %}
+  <div style="margin-bottom:1rem;">
+    <div style="display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:.25rem;">
+      <span style="font-weight:600;">{{ p.name }}</span>
+      <span>
+        <span class="{% if p.over %}negative{% else %}positive{% endif %}">{{ fmt_idr(p.actual) }}</span>
+        <span style="color:#888;"> / {{ fmt_idr(p.budget) }}</span>
+        {% if p.pct is not none %}
+          <span style="font-size:.8rem; color:{% if p.over %}#c1121f{% else %}#2d6a4f{% endif %}; font-weight:700; margin-left:.3rem;">{{ p.pct }}%</span>
+        {% endif %}
+      </span>
+    </div>
+    <div style="background:#e8eaf0; border-radius:4px; height:10px; overflow:hidden;">
+      <div style="height:100%; width:{{ [p.pct or 0, 100]|min }}%; background:{% if p.over %}#c1121f{% elif (p.pct or 0) > 80 %}#f4a261{% else %}#2d6a4f{% endif %}; border-radius:4px; transition:width .3s;"></div>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-muted">予算が設定されていません。下のフォームから設定してください。</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- 予算設定フォーム -->
+<div class="card">
+  <div class="card-title">予算設定（{{ year }}年{{ month }}月）</div>
+  <form method="post">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th>勘定科目</th>
+          <th style="text-align:right;">予算金額（IDR）</th>
+          <th style="text-align:right;">今月実績</th>
+        </tr></thead>
+        <tbody>
+          {% for p in progress %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td style="text-align:right;">
+              <input type="number" name="budget_{{ p.id }}"
+                     value="{{ budgets.get(p.id, '') }}"
+                     placeholder="0" min="0" step="1000"
+                     style="width:160px; text-align:right;">
+            </td>
+            <td class="amount {% if p.actual > 0 %}negative{% else %}{% endif %}">{{ fmt_idr(p.actual) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem; text-align:right;">
+      <button type="submit" class="btn btn-primary">💾 保存</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

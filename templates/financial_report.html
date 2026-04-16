@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}決算書 {{ data.year }}年 — {{ company_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    nav, .no-print { display: none !important; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+    body { background: #fff; }
+  }
+  .stmt-section { margin-bottom: 1.5rem; }
+  .stmt-row { display: flex; justify-content: space-between; padding: .35rem .5rem; border-bottom: 1px solid #f0f0f0; font-size: .92rem; }
+  .stmt-row:hover { background: #f9f9ff; }
+  .stmt-row.total { font-weight: 700; border-top: 2px solid #16213e; border-bottom: 2px solid #16213e; background: #f0f2f5; }
+  .stmt-row.net { font-size: 1.1rem; font-weight: 800; border: 2px solid #16213e; background: #16213e; color: #fff; border-radius: 6px; margin-top: .5rem; padding: .6rem .8rem; }
+  .stmt-row.net .positive { color: #8dffb0; }
+  .stmt-row.net .negative { color: #ffb0b0; }
+  .pct-badge { font-size: .78rem; color: #888; margin-left: .5rem; }
+  .yoy-up { color: #2d6a4f; font-size: .82rem; }
+  .yoy-down { color: #c1121f; font-size: .82rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header no-print">
+  <h1>📊 損益計算書</h1>
+  <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+    <button onclick="window.print()" class="btn btn-primary">🖨 印刷</button>
+    <a href="{{ url_for('web.pdf_report', year=year) }}" class="btn btn-edit">PDF出力</a>
+    <a href="{{ url_for('web.export_expenses_csv', year=year) }}" class="btn btn-edit">経費CSV</a>
+    <a href="{{ url_for('web.export_revenue_csv', year=year) }}" class="btn btn-edit">収入CSV</a>
+  </div>
+</div>
+
+<!-- 期間選択 -->
+<div class="card no-print" style="padding:1rem;">
+  <form method="get" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <label style="margin:0;">年度：
+      <select name="year" style="width:auto; margin-left:.3rem;">
+        {% for y in [2024, 2025, 2026, 2027] %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label style="margin:0;">集計日：
+      <input type="date" name="end_date" value="{{ end_date }}" style="width:auto; margin-left:.3rem;">
+    </label>
+    <button type="submit" class="btn btn-primary btn-sm">更新</button>
+  </form>
+</div>
+
+<!-- ヘッダー -->
+<div style="text-align:center; margin:1.5rem 0 1rem;">
+  <div style="font-size:1.5rem; font-weight:800; color:#16213e;">{{ company_name }}</div>
+  <div style="font-size:1.1rem; font-weight:700; margin:.4rem 0;">損 益 計 算 書</div>
+  <div style="font-size:.9rem; color:#555;">{{ data.year }}年1月1日 〜 {{ data.end_date or (data.year ~ '年12月31日') }}</div>
+  <div style="font-size:.8rem; color:#888; margin-top:.2rem;">単位：IDR（インドネシアルピア）</div>
+</div>
+
+<div class="grid-2">
+  <!-- 収入 -->
+  <div class="card">
+    <div class="card-title" style="font-size:.85rem; color:#2d6a4f; margin-bottom:.75rem;">▌ 売上高（収入）</div>
+    <div class="stmt-section">
+      {% for r in data.revenue_breakdown %}
+      <div class="stmt-row">
+        <span>{{ r.name }}</span>
+        <span>{{ fmt_idr(r.total) }}
+          <span class="pct-badge">
+            ({{ "%.1f"|format(r.total / data.total_revenue * 100) if data.total_revenue else 0 }}%)
+          </span>
+        </span>
+      </div>
+      {% endfor %}
+      <div class="stmt-row total">
+        <span>売上高合計</span>
+        <span class="positive">{{ fmt_idr(data.total_revenue) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 支出 -->
+  <div class="card">
+    <div class="card-title" style="font-size:.85rem; color:#c1121f; margin-bottom:.75rem;">▌ 費用（支出）</div>
+    <div class="stmt-section">
+      {% for e in data.expense_breakdown %}
+      <div class="stmt-row">
+        <span>{{ e.category }}</span>
+        <span>{{ fmt_idr(e.total) }}
+          <span class="pct-badge">
+            ({{ "%.1f"|format(e.total / data.total_expenses * 100) if data.total_expenses else 0 }}%)
+          </span>
+        </span>
+      </div>
+      {% endfor %}
+      <div class="stmt-row total">
+        <span>費用合計</span>
+        <span class="negative">{{ fmt_idr(data.total_expenses) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 当期純損益 -->
+<div class="stmt-row net">
+  <span>当期純損益</span>
+  <span class="{% if data.net_profit >= 0 %}positive{% else %}negative{% endif %}">
+    {{ fmt_idr(data.net_profit) }}
+  </span>
+</div>
+
+<!-- 前年比較 -->
+<div class="card" style="margin-top:1.5rem;">
+  <div class="card-title">前年同期比較</div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr>
+        <th></th>
+        <th style="text-align:right;">{{ data.year }}年</th>
+        <th style="text-align:right;">{{ data.year - 1 }}年</th>
+        <th style="text-align:right;">増減</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>収入合計</td>
+          <td class="amount positive">{{ fmt_idr(data.total_revenue) }}</td>
+          <td class="amount">{{ fmt_idr(data.prev_total_revenue) }}</td>
+          <td class="amount {% if data.total_revenue >= data.prev_total_revenue %}positive{% else %}negative{% endif %}">
+            {{ fmt_idr(data.total_revenue - data.prev_total_revenue) }}
+            {% set diff = data.total_revenue - data.prev_total_revenue %}
+            {% if data.prev_total_revenue > 0 %}
+              <span class="{% if diff >= 0 %}yoy-up{% else %}yoy-down{% endif %}">
+                ({{ "%+.1f"|format(diff / data.prev_total_revenue * 100) }}%)
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>支出合計</td>
+          <td class="amount negative">{{ fmt_idr(data.total_expenses) }}</td>
+          <td class="amount">{{ fmt_idr(data.prev_total_expenses) }}</td>
+          <td class="amount">{{ fmt_idr(data.total_expenses - data.prev_total_expenses) }}</td>
+        </tr>
+        <tr style="font-weight:700;">
+          <td>純損益</td>
+          <td class="amount {% if data.net_profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(data.net_profit) }}</td>
+          <td class="amount">{{ fmt_idr(data.prev_net_profit) }}</td>
+          <td class="amount {% if data.net_profit >= data.prev_net_profit %}positive{% else %}negative{% endif %}">
+            {{ fmt_idr(data.net_profit - data.prev_net_profit) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 月次推移 -->
+<div class="card" style="margin-top:1rem;">
+  <div class="card-title">月次推移</div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th style="text-align:right;">収入</th>
+        <th style="text-align:right;">支出</th>
+        <th style="text-align:right;">月次損益</th>
+        <th style="text-align:right;">累計損益</th>
+      </tr></thead>
+      <tbody>
+        {% for row in data.monthly %}
+        <tr>
+          <td>{{ row.month }}月</td>
+          <td class="amount positive">{{ fmt_idr(row.revenue) }}</td>
+          <td class="amount negative">{{ fmt_idr(row.expenses) }}</td>
+          <td class="amount {% if row.profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(row.profit) }}</td>
+          <td class="amount {% if row.cum_profit >= 0 %}positive{% else %}negative{% endif %}"><strong>{{ fmt_idr(row.cum_profit) }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr>
+        <td>合計</td>
+        <td class="amount positive">{{ fmt_idr(data.total_revenue) }}</td>
+        <td class="amount negative">{{ fmt_idr(data.total_expenses) }}</td>
+        <td class="amount {% if data.net_profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(data.net_profit) }}</td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

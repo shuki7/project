@@ -50,6 +50,15 @@ GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "")
 GDRIVE_CREDENTIALS_PATH = Path(__file__).parent / "credentials.json"
 GDRIVE_TOKEN_PATH       = Path(__file__).parent / "token.json"
 
+# ── 認証 ──────────────────────────────────────────────────────
+LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "keiri2026")
+
+# ── コース設定（人数カウント用キーワード）────────────────────────
+COURSE_KEYWORDS = {
+    "特定技能": os.getenv("KEYWORD_TOKUTEI", "特定技能"),
+    "JOB Matting": os.getenv("KEYWORD_JOB", "JOB"),
+}
+
 # ── 会社情報 ──────────────────────────────────────────────────
 COMPANY_NAME    = "PT BALI JAPAN DREAM"
 COMPANY_CAPITAL = 940_000_000  # IDR

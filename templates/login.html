@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン — PT BALI JAPAN DREAM 経理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;
+      background: #16213e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      text-align: center;
+    }
+    .login-logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #16213e;
+      margin-bottom: .25rem;
+    }
+    .login-sub {
+      font-size: .85rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+    .form-group { text-align: left; margin-bottom: 1.2rem; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #444; margin-bottom: .35rem; }
+    input[type="password"] {
+      width: 100%; padding: .6rem .8rem;
+      border: 1.5px solid #dde1ea; border-radius: 8px;
+      font-size: 1rem; font-family: inherit;
+    }
+    input[type="password"]:focus { outline: none; border-color: #16213e; }
+    button[type="submit"] {
+      width: 100%; padding: .75rem;
+      background: #16213e; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: opacity .15s;
+    }
+    button[type="submit"]:hover { opacity: .88; }
+    .flash-error {
+      background: #ffe5e5; color: #7b1a1a;
+      border-left: 4px solid #c1121f;
+      border-radius: 6px; padding: .65rem .9rem;
+      font-size: .88rem; margin-bottom: 1rem;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">PT BALI JAPAN DREAM</div>
+    <div class="login-sub">経理管理システム</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post">
+      <div class="form-group">
+        <label>パスワード</label>
+        <input type="password" name="password" autofocus placeholder="パスワードを入力">
+      </div>
+      <button type="submit">ログイン</button>
+    </form>
+  </div>
+</body>
+</html>

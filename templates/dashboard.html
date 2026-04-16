@@ -1,12 +1,29 @@
 {% extends "base.html" %}
 {% block title %}ダッシュボード — {{ company_name }}{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:.75rem; margin-bottom:1.2rem; }
+  .kpi-card { background:#fff; border-radius:10px; padding:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+  .kpi-label { font-size:.72rem; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.04em; }
+  .kpi-value { font-size:1.35rem; font-weight:800; margin:.25rem 0 .1rem; }
+  .kpi-sub { font-size:.78rem; }
+  .arrow-up { color:#2d6a4f; }
+  .arrow-down { color:#c1121f; }
+  .prog-bar { background:#e8eaf0; border-radius:4px; height:8px; overflow:hidden; margin-top:.3rem; }
+  .prog-fill { height:100%; border-radius:4px; transition:width .4s; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <h1>ダッシュボード</h1>
   <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
     <a href="{{ url_for('web.expenses_new') }}" class="btn btn-danger">＋ 経費を追加</a>
     <a href="{{ url_for('web.revenue_new') }}" class="btn btn-success">＋ 収入を追加</a>
+    <a href="{{ url_for('web.financial_report', year=year) }}" class="btn btn-edit">📊 決算書</a>
+    <a href="{{ url_for('web.export_expenses_csv', year=year) }}" class="btn btn-edit">⬇ CSV</a>
   </div>
 </div>
 
@@ -20,23 +37,48 @@
   </select>
 </form>
 
-<!-- 今月サマリー -->
+<!-- 今月サマリー（前月比付き）-->
 <h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">今月（{{ year }}年{{ month }}月）</h2>
-<div class="grid-3" style="margin-bottom:1.5rem;">
-  <div class="card">
-    <div class="card-title">今月収入</div>
-    <div class="card-value positive">{{ fmt_idr(monthly_rev) }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">今月支出</div>
-    <div class="card-value negative">{{ fmt_idr(monthly_exp) }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">今月損益</div>
-    <div class="card-value {% if monthly_profit >= 0 %}positive{% else %}negative{% endif %}">
-      {{ fmt_idr(monthly_profit) }}
+<div class="kpi-grid" style="margin-bottom:1.5rem;">
+  {% set rev_diff = monthly_rev - prev.revenue %}
+  {% set exp_diff = monthly_exp - prev.expenses %}
+  <div class="kpi-card">
+    <div class="kpi-label">今月収入</div>
+    <div class="kpi-value positive">{{ fmt_idr(monthly_rev) }}</div>
+    <div class="kpi-sub {% if rev_diff >= 0 %}arrow-up{% else %}arrow-down{% endif %}">
+      {% if rev_diff >= 0 %}▲{% else %}▼{% endif %}
+      {{ fmt_idr(rev_diff|abs) }}
+      {% if prev.revenue > 0 %}({{ "%.1f"|format(rev_diff / prev.revenue * 100) }}%){% endif %}
     </div>
   </div>
+  <div class="kpi-card">
+    <div class="kpi-label">今月支出</div>
+    <div class="kpi-value negative">{{ fmt_idr(monthly_exp) }}</div>
+    <div class="kpi-sub {% if exp_diff <= 0 %}arrow-up{% else %}arrow-down{% endif %}">
+      {% if exp_diff >= 0 %}▲{% else %}▼{% endif %}
+      {{ fmt_idr(exp_diff|abs) }}
+      {% if prev.expenses > 0 %}({{ "%.1f"|format(exp_diff / prev.expenses * 100) }}%){% endif %}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">今月損益</div>
+    <div class="kpi-value {% if monthly_profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(monthly_profit) }}</div>
+    <div class="kpi-sub text-muted">前月比</div>
+  </div>
+  {% for name, cnt in course_counts.items() %}
+  <div class="kpi-card" style="border-left:4px solid #e2c97e;">
+    <div class="kpi-label">{{ name }}</div>
+    <div class="kpi-value neutral">{{ cnt }} <span style="font-size:.9rem; font-weight:400;">名</span></div>
+    <div class="kpi-sub text-muted">今月支払い</div>
+  </div>
+  {% endfor %}
+  {% if recurring.total > 0 %}
+  <div class="kpi-card" style="border-left:4px solid #c5cae9;">
+    <div class="kpi-label">定期支出</div>
+    <div class="kpi-value negative">{{ fmt_idr(recurring.total) }}</div>
+    <div class="kpi-sub text-muted">{{ recurring.items|length }}件</div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- 年間サマリー -->
@@ -57,6 +99,103 @@
     </div>
   </div>
 </div>
+
+<!-- グラフ + ランキング -->
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+  <!-- 月次棒グラフ -->
+  <div class="card" style="padding:1rem;">
+    <div class="card-title">{{ year }}年 月次推移</div>
+    <canvas id="barChart" height="120"></canvas>
+  </div>
+  <!-- 収入ランキング -->
+  <div class="card" style="padding:1rem;">
+    <div class="card-title">今月 収入ランキング</div>
+    {% if ranking %}
+    {% for r in ranking %}
+    <div style="margin-bottom:.6rem;">
+      <div style="display:flex; justify-content:space-between; font-size:.85rem;">
+        <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%;">{{ r.label }}</span>
+        <span class="positive" style="font-weight:700;">{{ fmt_idr(r.total) }}</span>
+      </div>
+      {% if ranking[0].total > 0 %}
+      <div class="prog-bar"><div class="prog-fill" style="width:{{ (r.total / ranking[0].total * 100)|round }}%; background:#2d6a4f;"></div></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="text-muted" style="font-size:.85rem;">今月の収入データなし</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- カテゴリドーナツ + 予算進捗 -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="padding:1rem;">
+    <div class="card-title">今月 支出内訳</div>
+    <canvas id="donutChart" height="160"></canvas>
+  </div>
+  <div class="card" style="padding:1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+      <div class="card-title" style="margin:0;">予算 vs 実績</div>
+      <a href="{{ url_for('web.budget', year=year, month=month) }}" class="btn btn-edit btn-sm">設定</a>
+    </div>
+    {% set has_budget = budget_progress | selectattr('budget', 'gt', 0) | list %}
+    {% if has_budget %}
+      {% for p in has_budget[:6] %}
+      <div style="margin-bottom:.55rem;">
+        <div style="display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:.15rem;">
+          <span>{{ p.name }}</span>
+          <span class="{% if p.over %}negative{% else %}text-muted{% endif %}">{{ p.pct }}%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:{{ [p.pct or 0, 100]|min }}%; background:{% if p.over %}#c1121f{% elif (p.pct or 0) > 80 %}#f4a261{% else %}#2d6a4f{% endif %};"></div></div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <p class="text-muted" style="font-size:.85rem;">予算未設定 — <a href="{{ url_for('web.budget', year=year, month=month) }}">設定する</a></p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function(){
+  const cd = {{ chart_data|safe }};
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: cd.labels,
+      datasets: [
+        { label:'収入', data: cd.revenue, backgroundColor:'rgba(45,106,79,.7)', borderRadius:4 },
+        { label:'支出', data: cd.expenses, backgroundColor:'rgba(193,18,31,.6)', borderRadius:4 },
+        { label:'損益', data: cd.profit, type:'line', borderColor:'#e2c97e', backgroundColor:'rgba(226,201,126,.15)', tension:.4, fill:true, pointRadius:3, borderWidth:2 },
+      ]
+    },
+    options: {
+      plugins: { legend: { position:'bottom', labels:{ font:{ size:11 } } } },
+      scales: {
+        y: { ticks: { callback: v => 'Rp '+(v/1000000).toFixed(1)+'M', font:{size:10} } },
+        x: { ticks: { font:{size:10} } }
+      },
+      responsive: true, maintainAspectRatio: true,
+    }
+  });
+
+  const dd = {{ donut_data|safe }};
+  if (dd.labels.length) {
+    const colors = ['#2d6a4f','#c1121f','#e2c97e','#4a90e2','#f4a261','#9b59b6','#1abc9c','#e74c3c','#3498db','#f39c12'];
+    new Chart(document.getElementById('donutChart'), {
+      type: 'doughnut',
+      data: {
+        labels: dd.labels,
+        datasets: [{ data: dd.values, backgroundColor: colors.slice(0, dd.labels.length), borderWidth:2 }]
+      },
+      options: {
+        plugins: { legend: { position:'right', labels:{ font:{size:10}, boxWidth:12 } } },
+        responsive: true, maintainAspectRatio: true,
+      }
+    });
+  }
+})();
+</script>
 
 <!-- タブ切り替えパネル -->
 <div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
