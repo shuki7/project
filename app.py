@@ -7,6 +7,7 @@ cPanel の "Setup Python App" でこのファイルを指定する:
     Application Entry point: application
 """
 
+import os
 import sys
 import json
 import logging
@@ -20,6 +21,7 @@ from telegram.ext import Application
 from bot.webhook_handlers import register_handlers
 from config import TELEGRAM_TOKEN
 from core.database import init_db
+from web_app import web
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 # ── Flask & Telegram Application の初期化 ────────────────────────────────────
 
 flask_app = Flask(__name__)
+flask_app.secret_key = os.getenv("SECRET_KEY", "keiri-secret-2026")
+flask_app.register_blueprint(web)
 init_db()
 
 ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()

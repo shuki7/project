@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}ダッシュボード — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>ダッシュボード</h1>
+  <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
+    <a href="{{ url_for('web.expenses_new') }}" class="btn btn-danger">＋ 経費を追加</a>
+    <a href="{{ url_for('web.revenue_new') }}" class="btn btn-success">＋ 収入を追加</a>
+  </div>
+</div>
+
+<!-- 年選択 -->
+<form method="get" style="margin-bottom:1.2rem; display:flex; align-items:center; gap:.75rem;">
+  <label for="year-select" style="margin:0; font-size:.9rem;">表示年度：</label>
+  <select name="year" id="year-select" onchange="this.form.submit()" style="width:auto; padding:.4rem .65rem;">
+    {% for y in [2025, 2026, 2027] %}
+      <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
+    {% endfor %}
+  </select>
+</form>
+
+<!-- 今月サマリー -->
+<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">今月（{{ year }}年{{ month }}月）</h2>
+<div class="grid-3" style="margin-bottom:1.5rem;">
+  <div class="card">
+    <div class="card-title">今月収入</div>
+    <div class="card-value positive">{{ fmt_idr(monthly_rev) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">今月支出</div>
+    <div class="card-value negative">{{ fmt_idr(monthly_exp) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">今月損益</div>
+    <div class="card-value {% if monthly_profit >= 0 %}positive{% else %}negative{% endif %}">
+      {{ fmt_idr(monthly_profit) }}
+    </div>
+  </div>
+</div>
+
+<!-- 年間サマリー -->
+<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">年間（{{ year }}年）</h2>
+<div class="grid-3" style="margin-bottom:1.5rem;">
+  <div class="card">
+    <div class="card-title">年間収入</div>
+    <div class="card-value positive">{{ fmt_idr(annual_rev) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">年間支出</div>
+    <div class="card-value negative">{{ fmt_idr(annual_exp) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">年間損益</div>
+    <div class="card-value {% if annual_profit >= 0 %}positive{% else %}negative{% endif %}">
+      {{ fmt_idr(annual_profit) }}
+    </div>
+  </div>
+</div>
+
+<!-- 月次テーブル -->
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>月</th>
+          <th style="text-align:right;">収入</th>
+          <th style="text-align:right;">支出</th>
+          <th style="text-align:right;">損益</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary %}
+        <tr {% if row.month == month %}style="background:#fffde7;"{% endif %}>
+          <td>
+            <a href="{{ url_for('web.expenses_list', year=year, month=row.month) }}"
+               style="color:#16213e; font-weight:{% if row.month == month %}700{% else %}400{% endif %};">
+              {{ year }}年{{ '%02d'|format(row.month) }}月
+            </a>
+          </td>
+          <td class="amount positive">{{ fmt_idr(row.revenue) }}</td>
+          <td class="amount negative">{{ fmt_idr(row.expenses) }}</td>
+          <td class="amount {% if row.profit >= 0 %}positive{% else %}negative{% endif %}">
+            {{ fmt_idr(row.profit) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>合計</td>
+          <td class="amount positive">{{ fmt_idr(annual_rev) }}</td>
+          <td class="amount negative">{{ fmt_idr(annual_exp) }}</td>
+          <td class="amount {% if annual_profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(annual_profit) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

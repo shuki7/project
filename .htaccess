@@ -1,0 +1,30 @@
+# ── Passenger (cPanel Python App) ────────────────────────────────────────────
+PassengerEnabled On
+PassengerAppRoot /home/ordp5944/public_html/shuki.link
+PassengerBaseURI /
+
+# ── セキュリティ: 機密ファイルへの直接アクセスを禁止 ─────────────────────────
+
+# SQLiteデータベース・レシート画像・Obsidianノート
+<DirectoryMatch "^/home/ordp5944/public_html/shuki\.link/data">
+    Require all denied
+</DirectoryMatch>
+
+<FilesMatch "\.(db|db-wal|db-shm|env|json|key|pem)$">
+    Require all denied
+</FilesMatch>
+
+# Gitリポジトリ
+<DirectoryMatch "\.git">
+    Require all denied
+</DirectoryMatch>
+
+# Pythonソースコード（任意。公開したくない場合は有効化）
+# <FilesMatch "\.py$">
+#     Require all denied
+# </FilesMatch>
+
+# ── キャッシュ設定 ────────────────────────────────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive Off
+</IfModule>

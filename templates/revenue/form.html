@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('web.revenue_list') }}" class="btn btn-edit">← 一覧に戻る</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <form method="post">
+
+    <div class="form-group">
+      <label for="date">日付 <span style="color:#c1121f;">*</span></label>
+      <input type="date" id="date" name="date"
+             value="{{ revenue.get('date', '') }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="name">名前 <span style="color:#c1121f;">*</span></label>
+      <input type="text" id="name" name="name"
+             value="{{ revenue.get('name', '') }}" required placeholder="例: レッスン料">
+    </div>
+
+    <div class="form-group">
+      <label for="amount">金額（IDR） <span style="color:#c1121f;">*</span></label>
+      <input type="number" id="amount" name="amount"
+             value="{{ revenue.get('amount', '') }}" required min="0" step="1000"
+             placeholder="例: 500000">
+    </div>
+
+    <div class="form-group">
+      <label for="student_name">生徒名</label>
+      <input type="text" id="student_name" name="student_name"
+             value="{{ revenue.get('student_name', '') }}" placeholder="例: 田中 太郎">
+    </div>
+
+    <div class="form-group">
+      <label for="memo">メモ</label>
+      <textarea id="memo" name="memo" placeholder="備考など">{{ revenue.get('memo', '') }}</textarea>
+    </div>
+
+    <div style="display:flex; gap:.75rem; margin-top:1.5rem;">
+      <button type="submit" class="btn btn-success">保存する</button>
+      <a href="{{ url_for('web.revenue_list') }}" class="btn btn-edit">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

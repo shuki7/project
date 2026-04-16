@@ -5,10 +5,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── ローカルパス ──────────────────────────────────────────────
-# Google Driveのローカル同期フォルダを指定。
-# 未設定の場合はこのプロジェクトの data/ フォルダを使用。
+# 優先順位:
+#   1. GDRIVE_LOCAL_PATH  — Google Drive同期フォルダ
+#   2. DATA_DIR           — 任意のデータ保存先（サーバーのpublic_html外推奨）
+#   3. デフォルト         — プロジェクト直下の data/
+#
+# cPanelサーバーでの推奨設定 (.env):
+#   DATA_DIR=/home/ordp5944/keiri_data
 _gdrive_local = os.getenv("GDRIVE_LOCAL_PATH", "")
-BASE_DIR = Path(_gdrive_local) if _gdrive_local else Path(__file__).parent / "data"
+_data_dir     = os.getenv("DATA_DIR", "")
+BASE_DIR = (
+    Path(_gdrive_local) if _gdrive_local
+    else Path(_data_dir) if _data_dir
+    else Path(__file__).parent / "data"
+)
 
 DB_PATH        = BASE_DIR / "kakeibo.db"
 RECEIPTS_DIR   = BASE_DIR / "receipts"

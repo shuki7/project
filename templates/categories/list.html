@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}勘定科目 — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>勘定科目</h1>
+  <a href="{{ url_for('web.categories_new') }}" class="btn btn-primary">＋ 新規追加</a>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>カテゴリ名</th>
+          <th style="text-align:right;">経費件数</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if categories %}
+          {% for cat in categories %}
+          <tr>
+            <td>{{ cat.name }}</td>
+            <td style="text-align:right;">
+              {% if cat.expense_count > 0 %}
+                <a href="{{ url_for('web.expenses_list') }}?year={{ current_year }}&category={{ cat.id }}"
+                   style="color:#16213e;">
+                  {{ cat.expense_count }} 件
+                </a>
+              {% else %}
+                <span class="text-muted">0 件</span>
+              {% endif %}
+            </td>
+            <td class="actions">
+              <a href="{{ url_for('web.categories_edit', cat_id=cat.id) }}" class="btn btn-edit">✏️</a>
+              <form method="post" action="{{ url_for('web.categories_delete', cat_id=cat.id) }}"
+                    style="display:inline;"
+                    onsubmit="return confirmDelete({{ cat.expense_count }}, '{{ cat.name }}');">
+                <button type="submit" class="btn btn-danger">🗑️</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3" style="text-align:center; padding:2rem; color:#888;">
+              勘定科目がまだ登録されていません
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if categories %}
+<p class="text-muted">合計 {{ categories|length }} 件の勘定科目</p>
+{% endif %}
+
+<script>
+function confirmDelete(count, name) {
+  if (count > 0) {
+    return confirm('「' + name + '」には ' + count + ' 件の経費が紐付いています。\n削除すると経費のカテゴリが未分類になります。\n本当に削除しますか？');
+  }
+  return confirm('「' + name + '」を削除しますか？');
+}
+</script>
+{% endblock %}

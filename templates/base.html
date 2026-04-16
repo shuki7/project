@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ company_name }} 経理{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── ナビゲーション ── */
+    nav {
+      background: #16213e;
+      color: #fff;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 56px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    .nav-brand {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2c97e;
+      white-space: nowrap;
+      margin-right: 2rem;
+      text-decoration: none;
+    }
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 0;
+      height: 100%;
+    }
+    .nav-links a {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding: 0 1.1rem;
+      color: #c5cae9;
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: background .15s, color .15s;
+      border-bottom: 3px solid transparent;
+    }
+    .nav-links a:hover {
+      background: rgba(255,255,255,.08);
+      color: #fff;
+    }
+    .nav-links a.active {
+      color: #e2c97e;
+      border-bottom-color: #e2c97e;
+    }
+
+    /* ── コンテナ ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    /* ── フラッシュメッセージ ── */
+    .flash-list { list-style: none; margin-bottom: 1rem; }
+    .flash-item {
+      padding: .75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: .5rem;
+      font-size: .92rem;
+      font-weight: 500;
+    }
+    .flash-success {
+      background: #d8f3dc;
+      color: #1b4332;
+      border-left: 4px solid #2d6a4f;
+    }
+    .flash-error {
+      background: #ffe5e5;
+      color: #7b1a1a;
+      border-left: 4px solid #c1121f;
+    }
+
+    /* ── カード ── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.09);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: .5rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      font-size: .78rem;
+    }
+    .card-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .card-value.positive { color: #2d6a4f; }
+    .card-value.negative { color: #c1121f; }
+    .card-value.neutral  { color: #1a1a2e; }
+
+    /* ── グリッド ── */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 700px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── テーブル ── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+    thead th {
+      background: #16213e;
+      color: #e2c97e;
+      padding: .65rem .9rem;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    thead th a {
+      color: inherit;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    thead th a:hover { opacity: .8; }
+    tbody tr { border-bottom: 1px solid #e8eaf0; }
+    tbody tr:hover { background: #f5f7ff; }
+    tbody td { padding: .6rem .9rem; vertical-align: middle; }
+    td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+    td.actions { white-space: nowrap; }
+    tfoot td {
+      padding: .65rem .9rem;
+      font-weight: 700;
+      border-top: 2px solid #16213e;
+    }
+    tfoot td.amount { text-align: right; }
+
+    /* ── ボタン ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .45rem .9rem;
+      border-radius: 6px;
+      border: none;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: #16213e; color: #fff; }
+    .btn-success { background: #2d6a4f; color: #fff; }
+    .btn-danger  { background: #c1121f; color: #fff; padding: .35rem .7rem; font-size: .82rem; }
+    .btn-edit    { background: #e9ecef; color: #333; padding: .35rem .7rem; font-size: .82rem; }
+    .btn-sm      { padding: .3rem .6rem; font-size: .8rem; }
+
+    /* ── フォーム ── */
+    .form-group { margin-bottom: 1.1rem; }
+    label {
+      display: block;
+      font-size: .85rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: .35rem;
+    }
+    input[type="text"], input[type="number"], input[type="date"],
+    select, textarea {
+      width: 100%;
+      padding: .5rem .75rem;
+      border: 1.5px solid #dde1ea;
+      border-radius: 6px;
+      font-size: .92rem;
+      font-family: inherit;
+      transition: border-color .15s;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #16213e;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 18px; height: 18px;
+    }
+
+    /* ── フィルターバー ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .filter-bar select {
+      width: auto;
+      padding: .4rem .65rem;
+      font-size: .88rem;
+    }
+
+    /* ── ページヘッダー ── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+      gap: .75rem;
+    }
+    .page-header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #16213e;
+    }
+
+    /* ── レシートサムネイル ── */
+    .receipt-thumb {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      vertical-align: middle;
+    }
+
+    /* ── ユーティリティ ── */
+    .text-muted { color: #888; font-size: .85rem; }
+    .mt-1 { margin-top: .5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .positive { color: #2d6a4f; }
+    .negative { color: #c1121f; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <a class="nav-brand" href="{{ url_for('web.dashboard') }}">{{ company_name }}</a>
+    <ul class="nav-links">
+      <li><a href="{{ url_for('web.dashboard') }}" {% if page == 'dashboard' %}class="active"{% endif %}>ダッシュボード</a></li>
+      <li><a href="{{ url_for('web.expenses_list') }}" {% if page == 'expenses' %}class="active"{% endif %}>経費</a></li>
+      <li><a href="{{ url_for('web.revenue_list') }}" {% if page == 'revenue' %}class="active"{% endif %}>収入</a></li>
+      <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories' %}class="active"{% endif %}>勘定科目</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="flash-item flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

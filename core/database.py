@@ -285,3 +285,89 @@ def monthly_summary(year: int) -> list[dict]:
             "profit": inc - exp,
         })
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Web CRUD 拡張
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_expense_by_id(expense_id: str) -> dict:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT e.*, c.name as category_name FROM expenses e "
+        "LEFT JOIN categories c ON e.category_id = c.id "
+        "WHERE e.id = ?", (expense_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_expense(expense_id, name, amount, date, category_id=None,
+                   payment_method=None, payee=None, memo=None, is_recurring=False, receipt_path=None):
+    dt = datetime.strptime(date[:10], "%Y-%m-%d")
+    with transaction() as conn:
+        conn.execute("""
+            UPDATE expenses SET name=?, amount=?, date=?, year=?, month=?,
+            category_id=?, payment_method=?, payee=?, memo=?, is_recurring=?, receipt_path=?
+            WHERE id=?
+        """, (name, float(amount), date[:10], dt.year, dt.month,
+              category_id, payment_method, payee, memo,
+              1 if is_recurring else 0, receipt_path, expense_id))
+
+
+def delete_expense(expense_id: str):
+    with transaction() as conn:
+        conn.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
+
+
+def get_revenue_by_id(revenue_id: str) -> dict:
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM revenue WHERE id=?", (revenue_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_revenue(revenue_id, name, amount, date, student_name=None, memo=None):
+    dt = datetime.strptime(date[:10], "%Y-%m-%d")
+    with transaction() as conn:
+        conn.execute("""
+            UPDATE revenue SET name=?, amount=?, date=?, year=?, month=?,
+            student_name=?, memo=? WHERE id=?
+        """, (name, float(amount), date[:10], dt.year, dt.month,
+              student_name, memo, revenue_id))
+
+
+def delete_revenue(revenue_id: str):
+    with transaction() as conn:
+        conn.execute("DELETE FROM revenue WHERE id=?", (revenue_id,))
+
+
+def update_category(cat_id: str, name: str):
+    with transaction() as conn:
+        conn.execute("UPDATE categories SET name=? WHERE id=?", (name, cat_id))
+
+
+def delete_category(cat_id: str):
+    with transaction() as conn:
+        conn.execute("DELETE FROM categories WHERE id=?", (cat_id,))
+
+
+def get_category_by_id(cat_id: str) -> dict:
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM categories WHERE id=?", (cat_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_categories_with_count() -> list[dict]:
+    """カテゴリと各カテゴリの経費件数を返す。"""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT c.*, COUNT(e.id) as expense_count
+        FROM categories c
+        LEFT JOIN expenses e ON e.category_id = c.id
+        GROUP BY c.id
+        ORDER BY c.name
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

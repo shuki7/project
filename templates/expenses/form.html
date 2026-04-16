@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('web.expenses_list') }}" class="btn btn-edit">← 一覧に戻る</a>
+</div>
+
+<div class="card" style="max-width:640px;">
+  <form method="post" enctype="multipart/form-data">
+
+    <div class="form-group">
+      <label for="date">日付 <span style="color:#c1121f;">*</span></label>
+      <input type="date" id="date" name="date"
+             value="{{ expense.get('date', '') }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="name">名目 <span style="color:#c1121f;">*</span></label>
+      <input type="text" id="name" name="name"
+             value="{{ expense.get('name', '') }}" required placeholder="例: 交通費">
+    </div>
+
+    <div class="form-group">
+      <label for="amount">金額（IDR） <span style="color:#c1121f;">*</span></label>
+      <input type="number" id="amount" name="amount"
+             value="{{ expense.get('amount', '') }}" required min="0" step="1000"
+             placeholder="例: 150000">
+    </div>
+
+    <div class="form-group">
+      <label for="category_id">カテゴリ</label>
+      <select id="category_id" name="category_id">
+        <option value="">（未分類）</option>
+        {% for cat in categories %}
+          <option value="{{ cat.id }}"
+            {% if expense.get('category_id') == cat.id %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="payment_method">支払い方法</label>
+      <select id="payment_method" name="payment_method">
+        <option value="">（未選択）</option>
+        {% for pm in payment_methods %}
+          <option value="{{ pm }}"
+            {% if expense.get('payment_method') == pm %}selected{% endif %}>
+            {{ pm }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="payee">支払先</label>
+      <input type="text" id="payee" name="payee"
+             value="{{ expense.get('payee', '') }}" placeholder="例: Indomaret">
+    </div>
+
+    <div class="form-group">
+      <label for="memo">メモ</label>
+      <textarea id="memo" name="memo" placeholder="備考など">{{ expense.get('memo', '') }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <div class="checkbox-row">
+        <input type="checkbox" id="is_recurring" name="is_recurring" value="1"
+               {% if expense.get('is_recurring') %}checked{% endif %}>
+        <label for="is_recurring" style="margin:0; cursor:pointer;">定期フラグ（毎月繰り返し）</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="receipt">レシート画像</label>
+      <input type="file" id="receipt" name="receipt" accept="image/*">
+      {% if expense.get('receipt_path') %}
+        <div class="mt-1">
+          <p class="text-muted">現在のレシート：</p>
+          <a href="{{ url_for('web.serve_receipt', filename=expense.receipt_path) }}" target="_blank">
+            <img src="{{ url_for('web.serve_receipt', filename=expense.receipt_path) }}"
+                 alt="レシート" class="receipt-thumb" style="width:80px; height:80px;">
+          </a>
+          <p class="text-muted mt-1">新しいファイルを選択すると置き換わります。</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="display:flex; gap:.75rem; margin-top:1.5rem;">
+      <button type="submit" class="btn btn-success">保存する</button>
+      <a href="{{ url_for('web.expenses_list') }}" class="btn btn-edit">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
