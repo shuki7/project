@@ -38,7 +38,7 @@ def _allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def _save_receipt(file) -> str | None:
+def _save_receipt(file):
     """アップロードされたファイルを保存してファイル名を返す。"""
     if not file or file.filename == "":
         return None

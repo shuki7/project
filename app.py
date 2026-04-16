@@ -36,8 +36,14 @@ flask_app.secret_key = os.getenv("SECRET_KEY", "keiri-secret-2026")
 flask_app.register_blueprint(web)
 init_db()
 
-ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
-register_handlers(ptb_app)
+ptb_app = None
+if TELEGRAM_TOKEN:
+    try:
+        ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
+        register_handlers(ptb_app)
+        logger.info("Telegram Bot 初期化完了")
+    except Exception as e:
+        logger.warning(f"Telegram初期化スキップ: {e}")
 
 # cPanel Passenger が要求する WSGI callable
 application = flask_app
@@ -48,6 +54,8 @@ application = flask_app
 @flask_app.route(f"/webhook/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
     """Telegramからのupdateを受け取る。"""
+    if not ptb_app:
+        return Response("telegram not configured", status=503)
     try:
         data = request.get_json(force=True)
         update = Update.de_json(data, ptb_app.bot)
