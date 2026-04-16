@@ -12,6 +12,20 @@ import sys
 import os
 from pathlib import Path
 
+# LiteSpeed/Passenger環境でUTF-8エンコーディングを強制
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+os.environ.setdefault("PYTHONUTF8", "1")
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # プロジェクトルートをパスに追加
 _here = Path(__file__).parent
 sys.path.insert(0, str(_here))
