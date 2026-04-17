@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 flask_app = Flask(__name__)
 flask_app.secret_key = os.getenv("SECRET_KEY", "keiri-secret-2026")
+flask_app.config['TEMPLATES_AUTO_RELOAD'] = True  # テンプレート変更を即反映
 flask_app.register_blueprint(web)
 init_db()
 
