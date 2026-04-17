@@ -19,7 +19,8 @@ from werkzeug.utils import secure_filename
 
 from config import (
     RECEIPTS_DIR, fmt_idr, COMPANY_NAME,
-    LOGIN_PASSWORD, COURSE_KEYWORDS, REPORTS_DIR,
+    LOGIN_EMAIL, LOGIN_PASSWORD, LOGIN_RESET_TOKEN,
+    COURSE_KEYWORDS, REPORTS_DIR,
 )
 from core.database import (
     # カテゴリ
@@ -53,7 +54,7 @@ web = Blueprint("web", __name__, url_prefix="/keiri")
 
 @web.before_request
 def check_auth():
-    open_endpoints = {"web.login", "web.logout"}
+    open_endpoints = {"web.login", "web.logout", "web.recover"}
     if request.endpoint in open_endpoints:
         return
     if not session.get("logged_in"):
@@ -63,12 +64,17 @@ def check_auth():
 @web.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form.get("password") == LOGIN_PASSWORD:
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        email_ok = (not LOGIN_EMAIL) or (email == LOGIN_EMAIL)
+        pass_ok  = (password == LOGIN_PASSWORD)
+        if email_ok and pass_ok:
             session["logged_in"] = True
+            session["user_email"] = email
             session.permanent = True
             return redirect(request.args.get("next") or url_for("web.dashboard"))
-        flash("パスワードが違います。", "error")
-    return render_template("login.html")
+        flash("メールアドレスまたはパスワードが違います。", "error")
+    return render_template("login.html", require_email=bool(LOGIN_EMAIL))
 
 
 @web.route("/logout")
@@ -76,6 +82,19 @@ def logout():
     session.clear()
     flash("ログアウトしました。", "success")
     return redirect(url_for("web.login"))
+
+
+@web.route("/recover")
+def recover():
+    """リカバリートークンURLでパスワードなしでログインする。"""
+    token = request.args.get("token", "")
+    if not token or not LOGIN_RESET_TOKEN or token != LOGIN_RESET_TOKEN:
+        flash("リカバリートークンが無効です。", "error")
+        return redirect(url_for("web.login"))
+    session["logged_in"] = True
+    session.permanent = True
+    flash("リカバリートークンでログインしました。パスワードを確認してください。", "success")
+    return redirect(url_for("web.dashboard"))
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 PAYMENT_METHODS = ["CASH", "TRANSFER", "DEBIT", "立替え"]

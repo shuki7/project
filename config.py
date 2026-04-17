@@ -51,7 +51,9 @@ GDRIVE_CREDENTIALS_PATH = Path(__file__).parent / "credentials.json"
 GDRIVE_TOKEN_PATH       = Path(__file__).parent / "token.json"
 
 # ── 認証 ──────────────────────────────────────────────────────
+LOGIN_EMAIL    = os.getenv("LOGIN_EMAIL", "")
 LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "keiri2026")
+LOGIN_RESET_TOKEN = os.getenv("LOGIN_RESET_TOKEN", "")
 
 # ── コース設定（人数カウント用キーワード）────────────────────────
 COURSE_KEYWORDS = {
