@@ -345,14 +345,14 @@ def get_revenue_by_id(revenue_id: str) -> dict:
     return dict(row) if row else None
 
 
-def update_revenue(revenue_id, name, amount, date, student_name=None, memo=None):
+def update_revenue(revenue_id, name, amount, date, student_name=None, memo=None, receipt_path=None):
     dt = datetime.strptime(date[:10], "%Y-%m-%d")
     with transaction() as conn:
         conn.execute("""
             UPDATE revenue SET name=?, amount=?, date=?, year=?, month=?,
-            student_name=?, memo=? WHERE id=?
+            student_name=?, memo=?, receipt_path=? WHERE id=?
         """, (name, float(amount), date[:10], dt.year, dt.month,
-              student_name, memo, revenue_id))
+              student_name, memo, receipt_path, revenue_id))
 
 
 def delete_revenue(revenue_id: str):

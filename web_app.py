@@ -121,16 +121,34 @@ def _allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def _save_receipt(file):
-    """アップロードされたファイルを保存してファイル名を返す。"""
+def _save_receipt(file, date_str: str = None) -> str:
+    """
+    アップロードされたファイルを圧縮して Google Drive に保存する。
+    成功時は 'gdrive:<fileId>' を返す。Drive 未設定時はローカル保存。
+    ファイルがない場合は None を返す。
+    """
     if not file or file.filename == "":
         return None
     if not _allowed_file(file.filename):
         return None
+
+    raw_bytes = file.read()
+    compressed = compress_image(raw_bytes)
+    if date_str is None:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+
+    ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "jpg"
+    filename = f"{date_str.replace('-', '')}_{uuid.uuid4().hex[:8]}.{ext}"
+
+    # Google Drive にアップロード（容量節約のためローカル保存しない）
+    drive_id = upload_receipt_bytes(compressed, filename, date_str)
+    if drive_id:
+        return f"gdrive:{drive_id}"
+
+    # フォールバック: ローカル保存
     RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
-    ext = file.filename.rsplit(".", 1)[1].lower()
-    filename = f"{uuid.uuid4()}.{ext}"
-    file.save(RECEIPTS_DIR / filename)
+    local_path = RECEIPTS_DIR / filename
+    local_path.write_bytes(compressed)
     return filename
 
 
@@ -367,7 +385,7 @@ def expenses_new():
             )
 
         try:
-            receipt_path = _save_receipt(receipt_file)
+            receipt_path = _save_receipt(receipt_file, date)
             insert_expense(
                 name=name,
                 amount=float(amount),
@@ -426,7 +444,7 @@ def expenses_edit(expense_id):
 
         try:
             # 新しいレシートがアップロードされた場合のみ更新
-            new_receipt = _save_receipt(receipt_file)
+            new_receipt = _save_receipt(receipt_file, date)
             receipt_path = new_receipt if new_receipt else expense.get("receipt_path")
 
             update_expense(
@@ -537,6 +555,7 @@ def revenue_new():
         date = request.form.get("date", "").strip()
         student_name = request.form.get("student_name", "").strip() or None
         memo = request.form.get("memo", "").strip() or None
+        receipt_file = request.files.get("receipt")
 
         if not name or not amount or not date:
             flash("日付・名前・金額は必須です。", "error")
@@ -548,12 +567,14 @@ def revenue_new():
             )
 
         try:
+            receipt_path = _save_receipt(receipt_file, date)
             insert_revenue(
                 name=name,
                 amount=float(amount),
                 date=date,
                 student_name=student_name,
                 memo=memo,
+                receipt_path=receipt_path,
             )
             flash("収入を追加しました。", "success")
             return redirect(url_for("web.revenue_list"))
@@ -581,6 +602,7 @@ def revenue_edit(revenue_id):
         date = request.form.get("date", "").strip()
         student_name = request.form.get("student_name", "").strip() or None
         memo = request.form.get("memo", "").strip() or None
+        receipt_file = request.files.get("receipt")
 
         if not name or not amount or not date:
             flash("日付・名前・金額は必須です。", "error")
@@ -592,6 +614,8 @@ def revenue_edit(revenue_id):
             )
 
         try:
+            new_receipt = _save_receipt(receipt_file, date)
+            receipt_path = new_receipt if new_receipt else revenue.get("receipt_path")
             update_revenue(
                 revenue_id=revenue_id,
                 name=name,
@@ -599,6 +623,7 @@ def revenue_edit(revenue_id):
                 date=date,
                 student_name=student_name,
                 memo=memo,
+                receipt_path=receipt_path,
             )
             flash("収入を更新しました。", "success")
             return redirect(url_for("web.revenue_list"))
