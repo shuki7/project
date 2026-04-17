@@ -1,36 +1,40 @@
 """
-レシート画像をClaude APIで解析し、構造化データとして返す。
+レシート画像を Google Gemini Flash API で解析し、構造化データとして返す。
 インドネシア語・英語・日本語に対応。
+
+compress_image() もここで提供し、Telegram・Web 両方から利用する。
 """
 
-import base64
+import io
 import json
 import sys
 from pathlib import Path
+from typing import Union
+
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import anthropic
-from config import ANTHROPIC_API_KEY
+from config import GEMINI_API_KEY
 
-_client = None
-
-
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    return _client
+_model = None
 
 
-SYSTEM_PROMPT = """あなたはレシート解析の専門家です。
-レシート画像を分析し、以下のJSON形式で情報を抽出してください。
+def _get_model():
+    global _model
+    if _model is None:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        _model = genai.GenerativeModel("gemini-1.5-flash")
+    return _model
+
+
+RECEIPT_PROMPT = """このレシート・領収書の画像を解析して、以下のJSON形式で情報を抽出してください。
 通貨はインドネシアルピア（IDR）を基本とします。
 
-返すJSONの形式:
 {
   "name": "店名または支払い名目（文字列）",
-  "amount": 金額（数値、IDR。他通貨の場合はIDRに換算せずそのまま記載し currency_note で補足）,
+  "amount": 金額（数値、IDR。他通貨の場合はそのまま記載し currency_note で補足）,
   "date": "YYYY-MM-DD（レシートの日付。不明な場合はnull）",
   "payee": "支払先（店名など）",
   "category_hint": "推定カテゴリ（食費/交通費/光熱費/通信費/給料/備品/その他 から最も近いもの）",
@@ -40,107 +44,69 @@ SYSTEM_PROMPT = """あなたはレシート解析の専門家です。
   "confidence": "high/medium/low（読み取りの確信度）"
 }
 
-JSONのみ返してください。説明文は不要です。"""
+JSONのみ返してください。説明文もマークダウンのコードブロックも不要です。"""
 
 
-def parse_receipt(image_path: str | Path) -> dict:
+# ─────────────────────────────────────────────────────────────────────────────
+# 画像圧縮
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compress_image(image_bytes: bytes,
+                   max_px: int = 1600,
+                   quality: int = 83) -> bytes:
     """
-    レシート画像を解析して構造化データを返す。
+    画質を保ちながらファイルサイズを圧縮する。
 
-    Returns:
-        dict: {name, amount, date, payee, category_hint,
-               payment_method, memo, currency_note, confidence}
-              解析失敗時は {"error": "メッセージ"} を返す。
+    - 長辺を max_px 以下にリサイズ（それ以下なら変更なし）
+    - EXIF の回転情報を反映
+    - RGBA/P モードを RGB に変換
+    - JPEG quality=83 で再エンコード（原画の 20〜40% 程度になる）
+    - 圧縮後のほうが大きい場合はオリジナルを返す
     """
-    image_path = Path(image_path)
-    if not image_path.exists():
-        return {"error": f"ファイルが見つかりません: {image_path}"}
-
-    # 画像をbase64エンコード
-    with open(image_path, "rb") as f:
-        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
-
-    suffix = image_path.suffix.lower()
-    media_type_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }
-    media_type = media_type_map.get(suffix, "image/jpeg")
-
     try:
-        client = _get_client()
-        response = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_data,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "このレシートを解析してください。",
-                        },
-                    ],
-                }
-            ],
-        )
+        img = Image.open(io.BytesIO(image_bytes))
 
-        raw = response.content[0].text.strip()
-        # JSONブロックが含まれる場合に対応
-        if "```json" in raw:
-            raw = raw.split("```json")[1].split("```")[0].strip()
-        elif "```" in raw:
-            raw = raw.split("```")[1].split("```")[0].strip()
+        # EXIF 回転補正（274 = Orientation タグ）
+        try:
+            exif = img._getexif()
+            if exif:
+                orientation = exif.get(274)
+                if orientation == 3:
+                    img = img.rotate(180, expand=True)
+                elif orientation == 6:
+                    img = img.rotate(270, expand=True)
+                elif orientation == 8:
+                    img = img.rotate(90, expand=True)
+        except Exception:
+            pass
 
-        return json.loads(raw)
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
 
-    except json.JSONDecodeError as e:
-        return {"error": f"JSON解析失敗: {e}", "raw": raw}
-    except Exception as e:
-        return {"error": str(e)}
+        img.thumbnail((max_px, max_px), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        compressed = buf.getvalue()
+        return compressed if len(compressed) < len(image_bytes) else image_bytes
+
+    except Exception:
+        return image_bytes
 
 
-def parse_receipt_from_bytes(image_bytes: bytes, media_type: str = "image/jpeg") -> dict:
-    """Telegramから受け取ったバイト列を直接解析する。"""
-    image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
+# ─────────────────────────────────────────────────────────────────────────────
+# OCR
+# ─────────────────────────────────────────────────────────────────────────────
 
+def parse_receipt_from_bytes(image_bytes: bytes,
+                              media_type: str = "image/jpeg") -> dict:
+    """バイト列のレシート画像を Gemini Flash で解析する。"""
     try:
-        client = _get_client()
-        response = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_data,
-                            },
-                        },
-                        {"type": "text", "text": "このレシートを解析してください。"},
-                    ],
-                }
-            ],
-        )
+        model = _get_model()
+        img = Image.open(io.BytesIO(image_bytes))
+        response = model.generate_content([RECEIPT_PROMPT, img])
+        raw = response.text.strip()
 
-        raw = response.content[0].text.strip()
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()
         elif "```" in raw:
@@ -154,42 +120,47 @@ def parse_receipt_from_bytes(image_bytes: bytes, media_type: str = "image/jpeg")
         return {"error": str(e)}
 
 
-def classify_category(name: str, payee: str, hint: str, existing_categories: list[str]) -> str:
-    """
-    支出名・支払先・ヒントから最適なカテゴリを選択する。
-    existing_categories に一致するものを返す。一致しない場合はhintをそのまま返す。
-    """
+def parse_receipt(image_path: Union[str, Path]) -> dict:
+    """ファイルパスからレシートを解析する。"""
+    image_path = Path(image_path)
+    if not image_path.exists():
+        return {"error": f"ファイルが見つかりません: {image_path}"}
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
+    suffix = image_path.suffix.lower()
+    media_map = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png",  ".webp": "image/webp",
+    }
+    return parse_receipt_from_bytes(image_bytes, media_map.get(suffix, "image/jpeg"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# カテゴリ分類
+# ─────────────────────────────────────────────────────────────────────────────
+
+def classify_category(name: str, payee: str, hint: str,
+                       existing_categories: list) -> str:
+    """支出名・支払先・ヒントから既存カテゴリの中で最適なものを返す。"""
     if not existing_categories:
         return hint or "その他"
 
-    # 完全一致・部分一致をまず試みる
+    # 完全一致
     for cat in existing_categories:
         if cat == hint:
             return cat
 
-    # Claudeに選択させる
     try:
-        client = _get_client()
+        model = _get_model()
         cats_str = "\n".join(f"- {c}" for c in existing_categories)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=50,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"以下のカテゴリ一覧から、最も適切な1つを選んでください。\n\n"
-                        f"カテゴリ一覧:\n{cats_str}\n\n"
-                        f"支出名: {name}\n"
-                        f"支払先: {payee}\n"
-                        f"ヒント: {hint}\n\n"
-                        f"カテゴリ名のみ返してください。"
-                    ),
-                }
-            ],
+        prompt = (
+            f"以下のカテゴリ一覧から最も適切な1つを選んでください。\n\n"
+            f"カテゴリ一覧:\n{cats_str}\n\n"
+            f"支出名: {name}\n支払先: {payee}\nヒント: {hint}\n\n"
+            f"カテゴリ名のみ返してください。"
         )
-        selected = response.content[0].text.strip()
-        # 返答がリストに含まれているか確認
+        response = model.generate_content(prompt)
+        selected = response.text.strip()
         for cat in existing_categories:
             if cat in selected or selected in cat:
                 return cat

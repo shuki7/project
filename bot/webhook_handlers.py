@@ -1,6 +1,8 @@
 """
 Telegramボットのハンドラー定義（Webhook・Polling 共通）。
-telegram_bot.py のPollingモードと、app.py のWebhookモードの両方で使用する。
+
+レシート写真はディスクに保存せず、圧縮後バイト列をメモリに保持し、
+記帳確定時に Google Drive へ直接アップロードする。
 """
 
 import sys
@@ -19,12 +21,7 @@ from telegram.ext import (
     filters,
 )
 
-import io as _io
-
-from PIL import Image as _Image
-
-from config import TELEGRAM_ALLOWED_USERS, RECEIPTS_DIR, fmt_idr
-from sync.gdrive import upload_receipt
+from config import TELEGRAM_ALLOWED_USERS, fmt_idr
 from core.database import (
     insert_expense,
     insert_revenue,
@@ -33,7 +30,8 @@ from core.database import (
     sum_revenue,
     upsert_category,
 )
-from bot.ocr import parse_receipt_from_bytes, classify_category
+from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
+from sync.gdrive import upload_receipt_bytes
 from reports.generator import build_monthly_report_text
 from reports.pdf_export import export_monthly_pdf, export_annual_pdf
 from obsidian.md_writer import write_all_notes
@@ -148,57 +146,11 @@ async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# ── 画像圧縮ユーティリティ ─────────────────────────────────────────────────────
-
-def _compress_image(image_bytes: bytes,
-                    max_px: int = 1600,
-                    quality: int = 83) -> bytes:
-    """
-    画質を保ちながらファイルサイズを圧縮する。
-
-    - 長辺を max_px 以下にリサイズ（それ以下なら変更なし）
-    - EXIF の回転情報を反映
-    - RGBA/P モードを RGB に変換
-    - JPEG quality=83 で再エンコード（原画の 20〜40% 程度になる）
-    """
-    try:
-        img = _Image.open(_io.BytesIO(image_bytes))
-
-        # EXIF 回転補正
-        try:
-            exif = img._getexif()
-            if exif:
-                orientation = exif.get(274)  # 274 = Orientation tag
-                if orientation == 3:
-                    img = img.rotate(180, expand=True)
-                elif orientation == 6:
-                    img = img.rotate(270, expand=True)
-                elif orientation == 8:
-                    img = img.rotate(90, expand=True)
-        except Exception:
-            pass
-
-        # RGB 変換
-        if img.mode in ("RGBA", "P", "LA"):
-            img = img.convert("RGB")
-
-        # リサイズ（大きすぎる場合のみ）
-        img.thumbnail((max_px, max_px), _Image.LANCZOS)
-
-        buf = _io.BytesIO()
-        img.save(buf, format="JPEG", quality=quality, optimize=True)
-        compressed = buf.getvalue()
-
-        # 圧縮後のほうが大きい稀なケースはオリジナルを返す
-        return compressed if len(compressed) < len(image_bytes) else image_bytes
-
-    except Exception:
-        return image_bytes  # 失敗時はオリジナルをそのまま使用
-
-
 # ── レシート写真 ──────────────────────────────────────────────────────────────
+# ディスクに保存せず、圧縮バイト列をメモリ (_pending) に保持。
+# 記帳確定時のみ Google Drive へアップロードする。
 
-_pending: dict[int, dict] = {}
+_pending: dict = {}
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -209,10 +161,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
-    image_bytes = await file.download_as_bytearray()
+    raw_bytes = bytes(await file.download_as_bytearray())
 
-    result = parse_receipt_from_bytes(bytes(image_bytes), "image/jpeg")
+    # 圧縮（メモリ内のみ、ディスク保存なし）
+    compressed = compress_image(raw_bytes)
+    orig_kb = len(raw_bytes) // 1024
+    comp_kb = len(compressed) // 1024
+    ratio   = len(compressed) / max(len(raw_bytes), 1) * 100
 
+    # Gemini Flash で OCR
+    result = parse_receipt_from_bytes(compressed)
     if "error" in result:
         await update.message.reply_text(
             f"解析に失敗しました: {result['error']}\n\n"
@@ -220,6 +178,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # カテゴリ自動分類
     categories = [c["name"] for c in get_all_categories()]
     cat_name = classify_category(
         result.get("name", ""),
@@ -228,26 +187,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         categories,
     )
 
-    # レシート画像を圧縮して保存
-    RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
-    receipt_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.file_id[:8]}.jpg"
-    receipt_path = RECEIPTS_DIR / receipt_filename
-    compressed_bytes = _compress_image(bytes(image_bytes))
-    with open(receipt_path, "wb") as f:
-        f.write(compressed_bytes)
-
-    # 圧縮率をログ
-    ratio = len(compressed_bytes) / max(len(image_bytes), 1) * 100
-    orig_kb  = len(image_bytes) // 1024
-    comp_kb  = len(compressed_bytes) // 1024
-
-    user_id = update.effective_user.id
     date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
+    receipt_filename = (
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.file_id[:8]}.jpg"
+    )
+
+    # メモリに保持（確定ボタンが押されるまで Drive にはアップロードしない）
+    user_id = update.effective_user.id
     _pending[user_id] = {
-        "result": result,
-        "category": cat_name,
-        "receipt_path": str(receipt_path),
-        "date_str": date_str,
+        "result":           result,
+        "category":         cat_name,
+        "compressed_bytes": compressed,
+        "receipt_filename": receipt_filename,
+        "date_str":         date_str,
     }
 
     text = (
@@ -264,7 +216,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"この内容で記帳しますか？"
     )
     keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("記帳する", callback_data="confirm_expense"),
+        InlineKeyboardButton("記帳する",   callback_data="confirm_expense"),
         InlineKeyboardButton("キャンセル", callback_data="cancel_expense"),
     ]])
     await update.message.reply_text(text, reply_markup=keyboard)
@@ -286,10 +238,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("タイムアウトしました。もう一度送信してください。")
             return
 
-        result    = pending["result"]
-        cat_name  = pending["category"]
-        date_str  = pending.get("date_str") or datetime.now().strftime("%Y-%m-%d")
-        cat_id    = upsert_category(cat_name) if cat_name else None
+        result   = pending["result"]
+        cat_name = pending["category"]
+        date_str = pending["date_str"]
+        cat_id   = upsert_category(cat_name) if cat_name else None
+
+        # Google Drive へアップロード（ローカルには保存しない）
+        drive_id = upload_receipt_bytes(
+            pending["compressed_bytes"],
+            pending["receipt_filename"],
+            date_str,
+        )
+        receipt_ref = f"gdrive:{drive_id}" if drive_id else ""
 
         insert_expense(
             name=result.get("name") or "（名目なし）",
@@ -299,16 +259,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             payment_method=result.get("payment_method"),
             payee=result.get("payee"),
             memo=result.get("memo"),
-            receipt_path=pending["receipt_path"],
+            receipt_path=receipt_ref,
         )
-
-        # Google Drive にレシートをアップロード
-        drive_ok = upload_receipt(Path(pending["receipt_path"]), date_str)
 
         dt = datetime.strptime(date_str, "%Y-%m-%d")
         write_all_notes(dt.year, dt.month)
 
-        drive_note = " ☁️Drive保存済" if drive_ok else ""
+        drive_note = " ☁️Drive保存済" if drive_id else ""
         await query.edit_message_text(
             f"記帳しました！{drive_note}\n"
             f"{result.get('name', '')} — {fmt_idr(result.get('amount', 0))}"
@@ -316,6 +273,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ── テキスト手動入力 ──────────────────────────────────────────────────────────
+# 形式: 支出 <金額> <カテゴリ> [メモ]
+#       収入 <金額> <名前> [メモ]
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await auth_check(update):
@@ -332,7 +291,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     label = parts[2]
-    memo = " ".join(parts[3:]) if len(parts) > 3 else ""
+    memo  = " ".join(parts[3:]) if len(parts) > 3 else ""
     today = datetime.now().strftime("%Y-%m-%d")
 
     if record_type in ("支出", "経費", "expense"):

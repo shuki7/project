@@ -112,37 +112,45 @@ def _upload_file(service, local_path: Path, parent_id: str):
         print(f"[Drive] アップロード: {filename}")
 
 
-def upload_receipt(local_path: Path, date_str: str = None) -> bool:
+def upload_receipt_bytes(image_bytes: bytes,
+                          filename: str,
+                          date_str: str = None) -> str:
     """
-    レシート画像を Google Drive の receipts/YYYY-MM/ フォルダにアップロードする。
+    レシート画像のバイト列を Google Drive の receipts/YYYY-MM/ フォルダに
+    直接アップロードし、Drive ファイル ID を返す。
+    ローカルディスクには保存しない。
 
     Args:
-        local_path: ローカルのレシート画像パス
-        date_str:   "YYYY-MM-DD" 形式の日付文字列（省略時は今日）
+        image_bytes: 圧縮済み JPEG バイト列
+        filename:    保存するファイル名（例: "20260417_120000_abc12345.jpg"）
+        date_str:    "YYYY-MM-DD" 形式の日付（省略時は今日）
 
     Returns:
-        bool: 成功時 True、Drive未設定やエラー時 False
+        str: Drive ファイル ID。Drive 未設定・エラー時は空文字。
     """
-    if not GDRIVE_FOLDER_ID:
-        return False
-
-    if not local_path.exists():
-        return False
+    if not GDRIVE_FOLDER_ID or not image_bytes:
+        return ""
 
     try:
-        service = _get_service()
-    except Exception:
-        return False
-
-    try:
+        from googleapiclient.http import MediaIoBaseUpload
+        import io as _io
         from datetime import datetime as _dt
-        month_label = date_str[:7] if date_str else _dt.now().strftime("%Y-%m")
+
+        service = _get_service()
+        month_label   = date_str[:7] if date_str else _dt.now().strftime("%Y-%m")
         receipts_root = _get_or_create_folder(service, "receipts", GDRIVE_FOLDER_ID)
         month_folder  = _get_or_create_folder(service, month_label, receipts_root)
-        _upload_file(service, local_path, month_folder)
-        return True
+
+        buf   = _io.BytesIO(image_bytes)
+        media = MediaIoBaseUpload(buf, mimetype="image/jpeg", resumable=False)
+        meta  = {"name": filename, "parents": [month_folder]}
+        result = service.files().create(
+            body=meta, media_body=media, fields="id"
+        ).execute()
+        return result.get("id", "")
+
     except Exception:
-        return False
+        return ""
 
 
 def sync_to_drive():

@@ -22,6 +22,8 @@ from config import (
     LOGIN_EMAIL, LOGIN_PASSWORD, LOGIN_RESET_TOKEN,
     COURSE_KEYWORDS, REPORTS_DIR,
 )
+from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
+from sync.gdrive import upload_receipt_bytes
 from core.database import (
     # カテゴリ
     get_all_categories, get_category_by_id, upsert_category,
@@ -794,3 +796,86 @@ def serve_receipt(filename):
     if not filepath.exists():
         abort(404)
     return send_from_directory(str(RECEIPTS_DIR), filename)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# レシート OCR 自動記帳（写真アップロード → Gemini 解析 → 確認 → 保存）
+# ─────────────────────────────────────────────────────────────────────────────
+
+@web.route("/receipt_ocr", methods=["GET", "POST"])
+def receipt_ocr():
+    categories = get_all_categories()
+
+    # ── STEP 3: 確認フォーム送信 → DB 保存 ──────────────────────────────────
+    if request.method == "POST" and request.form.get("action") == "confirm":
+        drive_id    = request.form.get("drive_id", "")
+        filename    = request.form.get("filename", "")
+        date_str    = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
+        name        = request.form.get("name", "").strip() or "（名目なし）"
+        amount      = float(request.form.get("amount") or 0)
+        payment     = request.form.get("payment_method", "")
+        payee       = request.form.get("payee", "")
+        memo        = request.form.get("memo", "")
+        cat_name    = request.form.get("category", "")
+        cat_id      = upsert_category(cat_name) if cat_name else None
+        receipt_ref = f"gdrive:{drive_id}" if drive_id else ""
+
+        insert_expense(
+            name=name,
+            amount=amount,
+            date=date_str,
+            category_id=cat_id,
+            payment_method=payment,
+            payee=payee,
+            memo=memo,
+            receipt_path=receipt_ref,
+        )
+        flash("レシートから記帳しました！", "success")
+        return redirect(url_for("web.dashboard"))
+
+    # ── STEP 2: 写真アップロード → OCR → 確認フォーム表示 ───────────────────
+    if request.method == "POST" and "photo" in request.files:
+        file = request.files["photo"]
+        if not file or file.filename == "":
+            flash("ファイルを選択してください。", "error")
+            return render_template("receipt_ocr.html", step=1, categories=categories)
+
+        raw_bytes  = file.read()
+        compressed = compress_image(raw_bytes)
+        orig_kb    = len(raw_bytes) // 1024
+        comp_kb    = len(compressed) // 1024
+
+        # Gemini Flash で OCR
+        result = parse_receipt_from_bytes(compressed)
+        if "error" in result:
+            flash(f"OCR解析失敗: {result['error']}", "error")
+            return render_template("receipt_ocr.html", step=1, categories=categories)
+
+        # カテゴリ自動分類
+        cat_names = [c["name"] for c in categories]
+        cat_name  = classify_category(
+            result.get("name", ""),
+            result.get("payee", ""),
+            result.get("category_hint", ""),
+            cat_names,
+        )
+
+        # Drive へ先行アップロード（確定済みとして保存）
+        date_str  = result.get("date") or datetime.now().strftime("%Y-%m-%d")
+        filename  = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_web.jpg"
+        drive_id  = upload_receipt_bytes(compressed, filename, date_str)
+
+        return render_template(
+            "receipt_ocr.html",
+            step=2,
+            result=result,
+            cat_name=cat_name,
+            categories=categories,
+            drive_id=drive_id,
+            filename=filename,
+            orig_kb=orig_kb,
+            comp_kb=comp_kb,
+        )
+
+    # ── STEP 1: アップロードフォーム ─────────────────────────────────────────
+    return render_template("receipt_ocr.html", step=1, categories=categories)

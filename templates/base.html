@@ -297,6 +297,7 @@
       <li><a href="{{ url_for('web.expenses_list') }}" {% if page == 'expenses' %}class="active"{% endif %}>経費</a></li>
       <li><a href="{{ url_for('web.revenue_list') }}" {% if page == 'revenue' %}class="active"{% endif %}>収入</a></li>
       <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories' %}class="active"{% endif %}>勘定科目</a></li>
+      <li><a href="{{ url_for('web.receipt_ocr') }}" {% if page == 'receipt_ocr' %}class="active"{% endif %}>📷レシート</a></li>
       <li><a href="{{ url_for('web.budget') }}" {% if page == 'budget' %}class="active"{% endif %}>予算</a></li>
       <li><a href="{{ url_for('web.financial_report') }}" {% if page == 'financial' %}class="active"{% endif %}>決算書</a></li>
     </ul>

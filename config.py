@@ -42,8 +42,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 _allowed = os.getenv("TELEGRAM_ALLOWED_USERS", "")
 TELEGRAM_ALLOWED_USERS: list[int] = [int(x) for x in _allowed.split(",") if x.strip()]
 
-# ── Anthropic ─────────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# ── Google Gemini ─────────────────────────────────────────────
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ── Google Drive API ──────────────────────────────────────────
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "")

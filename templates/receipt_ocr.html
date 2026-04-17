@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}レシート自動記帳{% endblock %}
+
+{% block content %}
+<div style="max-width:620px; margin:2rem auto; padding:0 1rem;">
+
+  <h2 style="margin-bottom:1.5rem; color:#16213e;">
+    📷 レシート自動記帳
+  </h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div style="padding:.75rem 1rem; margin-bottom:1rem; border-radius:8px;
+                  background:{% if cat=='error' %}#fee2e2{% else %}#d1fae5{% endif %};
+                  color:{% if cat=='error' %}#991b1b{% else %}#065f46{% endif %};">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  {# ── STEP 1: 写真アップロードフォーム ── #}
+  {% if step == 1 %}
+  <div style="background:#fff; border-radius:12px; padding:2rem; box-shadow:0 2px 8px rgba(0,0,0,.08);">
+    <p style="color:#555; margin-bottom:1.5rem;">
+      レシートや領収書の写真をアップロードすると、Google Gemini Flash が自動で金額・日付・カテゴリを読み取り、記帳フォームに入力します。
+    </p>
+
+    <form method="post" enctype="multipart/form-data">
+      <div style="border:2px dashed #cbd5e1; border-radius:10px; padding:2rem;
+                  text-align:center; cursor:pointer; transition:.2s;"
+           id="drop-zone">
+        <div style="font-size:2.5rem; margin-bottom:.5rem;">📄</div>
+        <p style="color:#64748b; margin-bottom:1rem;">クリックまたはドラッグ＆ドロップ</p>
+        <input type="file" name="photo" id="photo-input" accept="image/*"
+               style="display:none;" onchange="previewImage(this)">
+        <button type="button" onclick="document.getElementById('photo-input').click()"
+                style="background:#16213e; color:#fff; border:none; border-radius:8px;
+                       padding:.6rem 1.5rem; cursor:pointer; font-size:.95rem;">
+          写真を選択
+        </button>
+        <p id="filename-label" style="color:#94a3b8; font-size:.85rem; margin-top:.75rem;"></p>
+      </div>
+
+      <div id="preview-wrap" style="display:none; margin-top:1rem; text-align:center;">
+        <img id="preview-img" src="" alt="preview"
+             style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid #e2e8f0;">
+      </div>
+
+      <button type="submit"
+              style="width:100%; margin-top:1.5rem; padding:.9rem;
+                     background:#16213e; color:#fff; border:none; border-radius:10px;
+                     font-size:1rem; cursor:pointer; font-weight:600;">
+        🔍 解析して記帳フォームへ
+      </button>
+    </form>
+  </div>
+
+  <script>
+    function previewImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      document.getElementById('filename-label').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('preview-img').src = e.target.result;
+        document.getElementById('preview-wrap').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+    const dz = document.getElementById('drop-zone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor='#3b82f6'; });
+    dz.addEventListener('dragleave', () => { dz.style.borderColor='#cbd5e1'; });
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.style.borderColor = '#cbd5e1';
+      const dt = e.dataTransfer;
+      if (dt.files.length) {
+        document.getElementById('photo-input').files = dt.files;
+        previewImage(document.getElementById('photo-input'));
+      }
+    });
+  </script>
+
+  {# ── STEP 2: OCR 結果確認フォーム ── #}
+  {% elif step == 2 %}
+  <div style="background:#fff; border-radius:12px; padding:2rem; box-shadow:0 2px 8px rgba(0,0,0,.08);">
+
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;
+                padding:.75rem 1rem; margin-bottom:1.5rem; font-size:.9rem; color:#166534;">
+      ✅ 解析完了　{{ orig_kb }}KB → {{ comp_kb }}KB に圧縮・Google Drive に保存済
+      {% if not drive_id %}<span style="color:#b45309;">（Drive 未設定のため保存なし）</span>{% endif %}
+    </div>
+
+    <p style="color:#555; margin-bottom:1.5rem; font-size:.9rem;">
+      内容を確認・修正してから「記帳する」を押してください。
+    </p>
+
+    <form method="post">
+      <input type="hidden" name="action"   value="confirm">
+      <input type="hidden" name="drive_id" value="{{ drive_id }}">
+      <input type="hidden" name="filename" value="{{ filename }}">
+
+      <div style="display:grid; gap:1rem;">
+
+        <div>
+          <label style="font-size:.85rem; color:#64748b; font-weight:600;">名目</label>
+          <input type="text" name="name"
+                 value="{{ result.get('name', '') }}"
+                 style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                        border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div>
+            <label style="font-size:.85rem; color:#64748b; font-weight:600;">金額 (IDR)</label>
+            <input type="number" name="amount" step="1"
+                   value="{{ result.get('amount', '') }}"
+                   style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                          border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+          </div>
+          <div>
+            <label style="font-size:.85rem; color:#64748b; font-weight:600;">日付</label>
+            <input type="date" name="date"
+                   value="{{ result.get('date', '') }}"
+                   style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                          border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div>
+            <label style="font-size:.85rem; color:#64748b; font-weight:600;">カテゴリ</label>
+            <select name="category"
+                    style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                           border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+              <option value="">-- 未分類 --</option>
+              {% for cat in categories %}
+                <option value="{{ cat.name }}"
+                  {% if cat.name == cat_name %}selected{% endif %}>
+                  {{ cat.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.85rem; color:#64748b; font-weight:600;">支払い方法</label>
+            <select name="payment_method"
+                    style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                           border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+              {% for pm in ['CASH','TRANSFER','DEBIT','不明'] %}
+                <option value="{{ pm }}"
+                  {% if result.get('payment_method','') == pm %}selected{% endif %}>
+                  {{ pm }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:.85rem; color:#64748b; font-weight:600;">支払先</label>
+          <input type="text" name="payee"
+                 value="{{ result.get('payee', '') }}"
+                 style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                        border-radius:8px; font-size:.95rem; margin-top:.25rem;">
+        </div>
+
+        <div>
+          <label style="font-size:.85rem; color:#64748b; font-weight:600;">メモ</label>
+          <textarea name="memo" rows="2"
+                    style="width:100%; padding:.6rem .8rem; border:1px solid #e2e8f0;
+                           border-radius:8px; font-size:.95rem; margin-top:.25rem;
+                           resize:vertical;">{{ result.get('memo', '') }}</textarea>
+        </div>
+
+        {% if result.get('currency_note') %}
+        <div style="background:#fef9c3; border:1px solid #fde68a; border-radius:8px;
+                    padding:.6rem .9rem; font-size:.85rem; color:#92400e;">
+          ⚠️ 通貨メモ: {{ result.currency_note }}
+        </div>
+        {% endif %}
+
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1.5rem;">
+        <a href="{{ url_for('web.receipt_ocr') }}"
+           style="display:block; text-align:center; padding:.85rem;
+                  background:#f1f5f9; color:#334155; border-radius:10px;
+                  text-decoration:none; font-weight:600;">
+          ← やり直す
+        </a>
+        <button type="submit"
+                style="padding:.85rem; background:#16213e; color:#fff;
+                       border:none; border-radius:10px; font-size:1rem;
+                       cursor:pointer; font-weight:600;">
+          ✅ 記帳する
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
