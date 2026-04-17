@@ -17,6 +17,27 @@
 {% endblock %}
 
 {% block content %}
+
+<!-- レシート自動記帳バナー -->
+<a href="{{ url_for('web.receipt_ocr') }}"
+   style="display:flex; align-items:center; gap:1rem;
+          background:linear-gradient(135deg,#16213e 0%,#0f3460 100%);
+          color:#fff; border-radius:12px; padding:1.1rem 1.5rem;
+          text-decoration:none; margin-bottom:1.25rem;
+          box-shadow:0 4px 14px rgba(15,52,96,.35);
+          transition:transform .15s, box-shadow .15s;"
+   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(15,52,96,.45)'"
+   onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(15,52,96,.35)'">
+  <span style="font-size:2rem; line-height:1;">📷</span>
+  <div>
+    <div style="font-size:1rem; font-weight:700; letter-spacing:.02em;">レシートで自動記帳</div>
+    <div style="font-size:.8rem; opacity:.8; margin-top:.15rem;">
+      写真をアップロードするだけ — Gemini AI が金額・日付・カテゴリを自動入力
+    </div>
+  </div>
+  <span style="margin-left:auto; font-size:1.25rem; opacity:.7;">›</span>
+</a>
+
 <div class="page-header">
   <h1>ダッシュボード</h1>
   <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
