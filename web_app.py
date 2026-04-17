@@ -58,7 +58,7 @@ def check_auth():
     if request.endpoint in open_endpoints:
         return
     if not session.get("logged_in"):
-        return redirect(url_for("web.login", next=request.url))
+        return redirect(url_for("web.login", next=request.path))
 
 
 @web.route("/login", methods=["GET", "POST"])
