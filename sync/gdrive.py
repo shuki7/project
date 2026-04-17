@@ -112,6 +112,39 @@ def _upload_file(service, local_path: Path, parent_id: str):
         print(f"[Drive] アップロード: {filename}")
 
 
+def upload_receipt(local_path: Path, date_str: str = None) -> bool:
+    """
+    レシート画像を Google Drive の receipts/YYYY-MM/ フォルダにアップロードする。
+
+    Args:
+        local_path: ローカルのレシート画像パス
+        date_str:   "YYYY-MM-DD" 形式の日付文字列（省略時は今日）
+
+    Returns:
+        bool: 成功時 True、Drive未設定やエラー時 False
+    """
+    if not GDRIVE_FOLDER_ID:
+        return False
+
+    if not local_path.exists():
+        return False
+
+    try:
+        service = _get_service()
+    except Exception:
+        return False
+
+    try:
+        from datetime import datetime as _dt
+        month_label = date_str[:7] if date_str else _dt.now().strftime("%Y-%m")
+        receipts_root = _get_or_create_folder(service, "receipts", GDRIVE_FOLDER_ID)
+        month_folder  = _get_or_create_folder(service, month_label, receipts_root)
+        _upload_file(service, local_path, month_folder)
+        return True
+    except Exception:
+        return False
+
+
 def sync_to_drive():
     """
     DBファイルとObsidianノートをGoogle Driveにアップロードする。

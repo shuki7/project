@@ -19,7 +19,12 @@ from telegram.ext import (
     filters,
 )
 
+import io as _io
+
+from PIL import Image as _Image
+
 from config import TELEGRAM_ALLOWED_USERS, RECEIPTS_DIR, fmt_idr
+from sync.gdrive import upload_receipt
 from core.database import (
     insert_expense,
     insert_revenue,
@@ -143,6 +148,54 @@ async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# ── 画像圧縮ユーティリティ ─────────────────────────────────────────────────────
+
+def _compress_image(image_bytes: bytes,
+                    max_px: int = 1600,
+                    quality: int = 83) -> bytes:
+    """
+    画質を保ちながらファイルサイズを圧縮する。
+
+    - 長辺を max_px 以下にリサイズ（それ以下なら変更なし）
+    - EXIF の回転情報を反映
+    - RGBA/P モードを RGB に変換
+    - JPEG quality=83 で再エンコード（原画の 20〜40% 程度になる）
+    """
+    try:
+        img = _Image.open(_io.BytesIO(image_bytes))
+
+        # EXIF 回転補正
+        try:
+            exif = img._getexif()
+            if exif:
+                orientation = exif.get(274)  # 274 = Orientation tag
+                if orientation == 3:
+                    img = img.rotate(180, expand=True)
+                elif orientation == 6:
+                    img = img.rotate(270, expand=True)
+                elif orientation == 8:
+                    img = img.rotate(90, expand=True)
+        except Exception:
+            pass
+
+        # RGB 変換
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+
+        # リサイズ（大きすぎる場合のみ）
+        img.thumbnail((max_px, max_px), _Image.LANCZOS)
+
+        buf = _io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        compressed = buf.getvalue()
+
+        # 圧縮後のほうが大きい稀なケースはオリジナルを返す
+        return compressed if len(compressed) < len(image_bytes) else image_bytes
+
+    except Exception:
+        return image_bytes  # 失敗時はオリジナルをそのまま使用
+
+
 # ── レシート写真 ──────────────────────────────────────────────────────────────
 
 _pending: dict[int, dict] = {}
@@ -175,21 +228,28 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         categories,
     )
 
-    # レシート画像を保存
+    # レシート画像を圧縮して保存
     RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
     receipt_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.file_id[:8]}.jpg"
     receipt_path = RECEIPTS_DIR / receipt_filename
+    compressed_bytes = _compress_image(bytes(image_bytes))
     with open(receipt_path, "wb") as f:
-        f.write(image_bytes)
+        f.write(compressed_bytes)
+
+    # 圧縮率をログ
+    ratio = len(compressed_bytes) / max(len(image_bytes), 1) * 100
+    orig_kb  = len(image_bytes) // 1024
+    comp_kb  = len(compressed_bytes) // 1024
 
     user_id = update.effective_user.id
+    date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
     _pending[user_id] = {
         "result": result,
         "category": cat_name,
         "receipt_path": str(receipt_path),
+        "date_str": date_str,
     }
 
-    date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
     text = (
         f"解析結果\n{'─'*20}\n"
         f"名目: {result.get('name', '不明')}\n"
@@ -198,7 +258,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"支払先: {result.get('payee', '')}\n"
         f"カテゴリ: {cat_name}\n"
         f"支払い: {result.get('payment_method', '不明')}\n"
-        f"メモ: {result.get('memo', '')}\n\n"
+        f"メモ: {result.get('memo', '')}\n"
+        f"{'─'*20}\n"
+        f"画像: {orig_kb}KB → {comp_kb}KB ({ratio:.0f}%)\n\n"
         f"この内容で記帳しますか？"
     )
     keyboard = InlineKeyboardMarkup([[
@@ -224,10 +286,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("タイムアウトしました。もう一度送信してください。")
             return
 
-        result = pending["result"]
-        cat_name = pending["category"]
-        cat_id = upsert_category(cat_name) if cat_name else None
-        date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
+        result    = pending["result"]
+        cat_name  = pending["category"]
+        date_str  = pending.get("date_str") or datetime.now().strftime("%Y-%m-%d")
+        cat_id    = upsert_category(cat_name) if cat_name else None
 
         insert_expense(
             name=result.get("name") or "（名目なし）",
@@ -240,11 +302,16 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             receipt_path=pending["receipt_path"],
         )
 
+        # Google Drive にレシートをアップロード
+        drive_ok = upload_receipt(Path(pending["receipt_path"]), date_str)
+
         dt = datetime.strptime(date_str, "%Y-%m-%d")
         write_all_notes(dt.year, dt.month)
 
+        drive_note = " ☁️Drive保存済" if drive_ok else ""
         await query.edit_message_text(
-            f"記帳しました！\n{result.get('name', '')} — {fmt_idr(result.get('amount', 0))}"
+            f"記帳しました！{drive_note}\n"
+            f"{result.get('name', '')} — {fmt_idr(result.get('amount', 0))}"
         )
 
 
