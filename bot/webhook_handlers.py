@@ -11,6 +11,7 @@ Telegramボットのハンドラー定義（Webhook・Polling 共通）。
   4. 確定 → Drive保存 → DB記帳（レシートの日付でyear/monthが決まる）
 """
 
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -41,6 +42,54 @@ from sync.gdrive import upload_receipt_bytes
 from reports.generator import build_monthly_report_text
 from reports.pdf_export import export_monthly_pdf, export_annual_pdf
 from obsidian.md_writer import write_all_notes
+
+
+# ── 金額パーサー ──────────────────────────────────────────────────────────────
+
+def _parse_amount(text) -> float:
+    """
+    各種フォーマットの金額文字列を float に変換する。
+
+    対応フォーマット:
+      50000          → 50000.0
+      50,000         → 50000.0  （カンマ千区切り）
+      50.000         → 50000.0  （ドット千区切り・インドネシア式）
+      1,500,000      → 1500000.0
+      1.500.000      → 1500000.0
+      1.500,50       → 1500.5   （欧州式：カンマが小数点）
+      1500.50        → 1500.5   （ドットが小数点）
+      Rp 1.500.000   → 1500000.0 （通貨記号付き）
+    """
+    if isinstance(text, (int, float)):
+        return float(text)
+
+    text = str(text).strip()
+    # 通貨記号・スペース・IDR/Rp を除去
+    text = re.sub(r'(?i)(idr|rp|¥|\$|€|£|\s)', '', text)
+    if not text:
+        return 0.0
+
+    last_comma = text.rfind(',')
+    last_dot   = text.rfind('.')
+
+    if last_comma == -1 and last_dot == -1:
+        # セパレータなし: "50000"
+        return float(text)
+
+    if last_comma > last_dot:
+        # カンマが最後 → 欧州式小数点: "1.500,50" → 1500.50
+        cleaned = text.replace('.', '').replace(',', '.')
+    else:
+        # ドットが最後
+        after_dot = text[last_dot + 1:]
+        if len(after_dot) <= 2:
+            # 小数点付き: "1500.50" or "150.5"
+            cleaned = text.replace(',', '')
+        else:
+            # 千区切り: "1.500.000" or "1,500.000"
+            cleaned = text.replace(',', '').replace('.', '')
+
+    return float(cleaned)
 
 
 # ── 認証 ─────────────────────────────────────────────────────────────────────
@@ -256,6 +305,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         categories,
     )
 
+    # amount を float に正規化（Gemini が "1.500.000" などの文字列で返す場合に対応）
+    try:
+        result["amount"] = _parse_amount(result.get("amount", 0))
+    except (ValueError, TypeError):
+        result["amount"] = 0.0
+
     # レシートの日付を使用（なければ今日）→ 自動的に正しいyear/monthに記帳される
     date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
     receipt_filename = (
@@ -402,7 +457,7 @@ def _current_value(pending: dict, field: str) -> str:
     r = pending["result"]
     mapping = {
         "name":     r.get("name", ""),
-        "amount":   str(int(r.get("amount", 0))),
+        "amount":   str(int(_parse_amount(r.get("amount", 0)))),
         "date":     pending.get("date_str", ""),
         "category": pending.get("category", ""),
         "payee":    r.get("payee", ""),
@@ -431,9 +486,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             r["name"] = text_input
         elif field == "amount":
             try:
-                r["amount"] = float(text_input.replace(",", "").replace(".", ""))
-            except ValueError:
-                await update.message.reply_text("❌ 金額は数字で入力してください（例: 50000）")
+                r["amount"] = _parse_amount(text_input)
+            except (ValueError, TypeError):
+                await update.message.reply_text(
+                    "❌ 金額の形式が正しくありません。\n"
+                    "入力例: 50000 / 50,000 / 1.500.000 / 1,500,000"
+                )
                 return
         elif field == "date":
             # YYYY-MM-DD 形式に正規化
@@ -469,9 +527,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     record_type = parts[0]
     try:
-        amount = float(parts[1].replace(",", "").replace(".", ""))
-    except ValueError:
-        await update.message.reply_text("金額は数値で入力してください。")
+        amount = _parse_amount(parts[1])
+    except (ValueError, TypeError):
+        await update.message.reply_text(
+            "❌ 金額の形式が正しくありません。\n"
+            "入力例: 支出 50000 食費 / 支出 1.500.000 食費"
+        )
         return
 
     label = parts[2]
