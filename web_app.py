@@ -48,7 +48,7 @@ from core.database import (
     get_budget_progress, get_budgets, set_budget,
 )
 
-web = Blueprint("web", __name__, url_prefix="/keiri")
+web = Blueprint("web", __name__)
 
 
 # ── 言語・翻訳をすべてのテンプレートに注入 ──────────────────────────────────
@@ -830,12 +830,12 @@ def export_revenue_csv():
 @web.route("/pdf/<int:year>/<int:month>")
 def pdf_report(year, month=None):
     try:
-        from reports.pdf_export import monthly_report, annual_report
+        from reports.pdf_export import export_monthly_pdf, export_annual_pdf
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         if month:
-            path = monthly_report(year, month)
+            path = export_monthly_pdf(year, month)
         else:
-            path = annual_report(year)
+            path = export_annual_pdf(year)
         return send_from_directory(str(path.parent), path.name,
                                    as_attachment=True, mimetype="application/pdf")
     except Exception as e:

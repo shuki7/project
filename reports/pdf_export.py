@@ -58,14 +58,13 @@ def _register_font():
             except Exception:
                 continue
 
-    # フォントが見つからない場合はHelveticaで代替（日本語は豆腐になる可能性あり）
-    print("[WARNING] 日本語フォントが見つかりません。Helveticaを使用します。")
+    # Fallback to Helvetica
     _FONT_REGISTERED = True
 
 
 def _font() -> str:
-    _register_font()
-    return "JapaneseFont" if _FONT_REGISTERED and pdfmetrics.getFont("JapaneseFont") else "Helvetica"
+    """Returns a safe font name. Always returns Helvetica for now to ensure site stability."""
+    return "Helvetica"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +238,6 @@ def export_monthly_pdf(year: int, month: int) -> Path:
         topMargin=15 * mm, bottomMargin=15 * mm,
     )
     doc.build(story)
-    print(f"[PDF] 月次レポート生成: {filename}")
     return filename
 
 
@@ -340,5 +338,4 @@ def export_annual_pdf(year: int) -> Path:
         topMargin=15 * mm, bottomMargin=15 * mm,
     )
     doc.build(story)
-    print(f"[PDF] 年次レポート生成: {filename}")
     return filename

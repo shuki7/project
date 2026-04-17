@@ -361,7 +361,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     if not TELEGRAM_TOKEN:
-        print("[ERROR] TELEGRAM_TOKEN が設定されていません。.env を確認してください。")
         sys.exit(1)
 
     init_db()
@@ -376,7 +375,6 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    print("Telegramボット起動中...")
     app.run_polling(drop_pending_updates=True)
 
 

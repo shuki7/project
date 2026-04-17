@@ -1,0 +1,204 @@
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][1693100] Child process with pid: 1693651 was killed by signal: 15, core dumped: no
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][1694398] Child process with pid: 1694907 was killed by signal: 15, core dumped: no
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 33, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][1943247] Child process with pid: 1943448 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][4047885] Child process with pid: 4048503 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 146005 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] \u521d\u671f\u5316\u5b8c\u4e86: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 199447 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] initialized: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 282597 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] initialized: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 294292 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] initialized: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 295391 was killed by signal: 15, core dumped: no
+Traceback (most recent call last):
+  File "/home/ordp5944/public_html/shuki.link/keiri/passenger_wsgi.py", line 6, in <module>
+    from app import application
+  File "/home/ordp5944/public_html/shuki.link/keiri/app.py", line 37, in <module>
+    init_db()
+  File "/home/ordp5944/public_html/shuki.link/keiri/core/database.py", line 95, in init_db
+    print(f"[DB] initialized: {DB_PATH}")
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 5-9: ordinal not in range(128)
+[UID:1519][145382] Child process with pid: 302388 was killed by signal: 15, core dumped: no
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: retry: Resource temporarily unavailable
+/usr/local/lsws/fcgi-bin/lswsgi_wrapper: fork: Resource temporarily unavailable
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.23). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)

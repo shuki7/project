@@ -35,24 +35,29 @@ flask_app = Flask(__name__)
 flask_app.secret_key = os.getenv("SECRET_KEY", "keiri-secret-2026")
 flask_app.config['TEMPLATES_AUTO_RELOAD'] = True  # テンプレート変更を即反映
 flask_app.register_blueprint(web)
-init_db()
+# cPanel Passenger が要求する WSGI callable
+application = flask_app
+
+try:
+    init_db()
+except Exception as e:
+    logger.error(f"Database initialization failed: {e}")
 
 ptb_app = None
 if TELEGRAM_TOKEN:
     try:
         ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
         register_handlers(ptb_app)
-        logger.info("Telegram Bot 初期化完了")
+        logger.info("Telegram Bot Initialized")
     except Exception as e:
-        logger.warning(f"Telegram初期化スキップ: {e}")
+        logger.warning(f"Telegram Initialization Skipped: {e}")
 
-# cPanel Passenger が要求する WSGI callable
-application = flask_app
+# WSGI callable is defined above
 
 
 # ── Webhook エンドポイント ────────────────────────────────────────────────────
 
-@flask_app.route("/keiri/telegram_webhook", methods=["POST"])
+@flask_app.route("/telegram_webhook", methods=["POST"])
 def telegram_webhook():
     """Telegramからのupdateを受け取る（LiteSpeedプロキシ経由）。
     Webhook URL: https://shuki.link/keiri/telegram_webhook
@@ -74,11 +79,11 @@ def telegram_webhook():
 
         return Response("ok", status=200)
     except Exception as e:
-        logger.error(f"Webhook処理エラー: {e}")
+        logger.error(f"Webhook Error: {e}")
         return Response("error", status=500)
 
 
-@flask_app.route("/keiri/health", methods=["GET"])
+@flask_app.route("/health", methods=["GET"])
 def health():
     """死活監視用。"""
     return Response("ok", status=200)

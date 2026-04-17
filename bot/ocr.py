@@ -11,7 +11,11 @@ import sys
 from pathlib import Path
 from typing import Union
 
-from PIL import Image
+try:
+    from PIL import Image
+    _PIL_AVAILABLE = True
+except ImportError:
+    _PIL_AVAILABLE = False
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -63,6 +67,8 @@ def compress_image(image_bytes: bytes,
     - JPEG quality=83 で再エンコード（原画の 20〜40% 程度になる）
     - 圧縮後のほうが大きい場合はオリジナルを返す
     """
+    if not _PIL_AVAILABLE:
+        return image_bytes
     try:
         img = Image.open(io.BytesIO(image_bytes))
 
@@ -103,6 +109,8 @@ def parse_receipt_from_bytes(image_bytes: bytes,
     """バイト列のレシート画像を Gemini Flash で解析する。"""
     try:
         model = _get_model()
+        if not _PIL_AVAILABLE:
+            return {"error": "Pillow未インストール。pip install Pillow"}
         img = Image.open(io.BytesIO(image_bytes))
         response = model.generate_content([RECEIPT_PROMPT, img])
         raw = response.text.strip()
