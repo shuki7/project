@@ -51,9 +51,11 @@ application = flask_app
 
 # ── Webhook エンドポイント ────────────────────────────────────────────────────
 
-@flask_app.route(f"/webhook/{TELEGRAM_TOKEN}", methods=["POST"])
-def webhook():
-    """Telegramからのupdateを受け取る。"""
+@flask_app.route("/keiri/telegram_webhook", methods=["POST"])
+def telegram_webhook():
+    """Telegramからのupdateを受け取る（LiteSpeedプロキシ経由）。
+    Webhook URL: https://shuki.link/keiri/telegram_webhook
+    """
     if not ptb_app:
         return Response("telegram not configured", status=503)
     try:
@@ -75,9 +77,9 @@ def webhook():
         return Response("error", status=500)
 
 
-@flask_app.route("/health", methods=["GET"])
+@flask_app.route("/keiri/health", methods=["GET"])
 def health():
-    """cPanelの死活監視用。"""
+    """死活監視用。"""
     return Response("ok", status=200)
 
 

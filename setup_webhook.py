@@ -17,7 +17,7 @@ BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 def set_webhook(domain: str):
     url = f"{BASE_URL}/setWebhook"
-    webhook_url = f"{domain}/webhook/{TELEGRAM_TOKEN}"
+    webhook_url = f"{domain}/keiri/telegram_webhook"
     resp = requests.post(url, json={"url": webhook_url})
     data = resp.json()
     if data.get("ok"):
