@@ -823,6 +823,7 @@ def receipt_ocr():
                 date=date_str,
                 student_name=request.form.get("student_name", ""),
                 memo=memo,
+                receipt_path=receipt_ref,
             )
             flash("売上を記帳しました！", "success")
         else:

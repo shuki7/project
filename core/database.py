@@ -102,7 +102,14 @@ def init_db():
     """データベースとテーブルを初期化する。"""
     with transaction() as conn:
         conn.executescript(SCHEMA_SQL)
-    pass  # DB initialized
+        # マイグレーション: 既存テーブルへのカラム追加
+        for sql in [
+            "ALTER TABLE revenue ADD COLUMN receipt_path TEXT",
+        ]:
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass  # already exists
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -231,16 +238,17 @@ def insert_revenue(
     student_name: str = None,
     memo: str = None,
     notion_id: str = None,
+    receipt_path: str = None,
 ) -> str:
     dt = datetime.strptime(date[:10], "%Y-%m-%d")
     rev_id = str(uuid.uuid4())
     with transaction() as conn:
         conn.execute(
             """INSERT OR IGNORE INTO revenue
-               (id, name, amount, date, year, month, student_name, memo, notion_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+               (id, name, amount, date, year, month, student_name, memo, notion_id, receipt_path)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (rev_id, name, amount, date[:10], dt.year, dt.month,
-             student_name, memo, notion_id),
+             student_name, memo, notion_id, receipt_path),
         )
     return rev_id
 

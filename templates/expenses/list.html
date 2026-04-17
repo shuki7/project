@@ -63,9 +63,6 @@
             <td>
               {{ e.name }}
               {% if e.is_recurring %}<span title="定期" style="color:#e2c97e; font-size:.8em;">🔁</span>{% endif %}
-              {% if e.receipt_path %}
-                <a href="{{ url_for('web.serve_receipt', filename=e.receipt_path) }}" target="_blank" title="レシートを見る">📷</a>
-              {% endif %}
             </td>
             <td>{{ e.category_name or '<span class="text-muted">未分類</span>'|safe }}</td>
             <td>{{ e.payee or '' }}</td>
@@ -76,6 +73,17 @@
             </td>
             <td class="amount">{{ fmt_idr(e.amount) }}</td>
             <td class="actions">
+              {% if e.receipt_path %}
+                {% if e.receipt_path.startswith('gdrive:') %}
+                  <a href="https://drive.google.com/file/d/{{ e.receipt_path[7:] }}/view"
+                     target="_blank" class="btn btn-edit" title="レシートを表示（Google Drive）"
+                     style="padding:.3rem .5rem;">📎</a>
+                {% else %}
+                  <a href="{{ url_for('web.serve_receipt', filename=e.receipt_path) }}"
+                     target="_blank" class="btn btn-edit" title="レシートを表示"
+                     style="padding:.3rem .5rem;">📎</a>
+                {% endif %}
+              {% endif %}
               <a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit">✏️</a>
               <form method="post" action="{{ url_for('web.expenses_delete', expense_id=e.id) }}"
                     style="display:inline;"
