@@ -3,6 +3,12 @@ Telegramボットのハンドラー定義（Webhook・Polling 共通）。
 
 レシート写真はディスクに保存せず、圧縮後バイト列をメモリに保持し、
 記帳確定時に Google Drive へ直接アップロードする。
+
+フロー:
+  1. 写真送信 → Gemini OCR → 解析結果を表示
+  2. [💸 経費] [💰 売上] [✏️ 編集] [❌ キャンセル] の4択
+  3. ✏️ 編集 → フィールド選択 → テキスト入力 → 戻る
+  4. 確定 → Drive保存 → DB記帳（レシートの日付でyear/monthが決まる）
 """
 
 import sys
@@ -59,7 +65,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     text = (
         "家計簿ボットへようこそ！\n\n"
-        "レシートの写真を送ると自動で記帳します。\n\n"
+        "📷 レシートの写真を送ると自動で読み取ります。\n"
+        "経費か売上か選んで記帳できます。\n\n"
+        "✏️ 手動入力:\n"
+        "  支出 50000 食費 ランチ\n"
+        "  収入 100000 レッスン料 田中様\n\n"
         "コマンド一覧:\n"
         "/report — 今月の収支レポート\n"
         "/report 2026-03 — 指定月のレポート\n"
@@ -147,17 +157,77 @@ async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ── レシート写真 ──────────────────────────────────────────────────────────────
-# ディスクに保存せず、圧縮バイト列をメモリ (_pending) に保持。
-# 記帳確定時のみ Google Drive へアップロードする。
 
 _pending: dict = {}
+
+# フィールドの日本語ラベル
+_FIELD_LABELS = {
+    "name":    "名目",
+    "amount":  "金額（数字のみ）",
+    "date":    "日付（例: 2026-04-17）",
+    "category":"カテゴリ",
+    "payee":   "支払先",
+    "method":  "支払方法（例: 現金・カード・TRANSFER）",
+    "memo":    "メモ",
+}
+
+
+def _format_confirmation(pending: dict) -> str:
+    """確認メッセージ本文を生成する。"""
+    r = pending["result"]
+    return (
+        f"📋 解析結果\n{'─'*22}\n"
+        f"📌 名目    : {r.get('name', '不明')}\n"
+        f"💴 金額    : {fmt_idr(r.get('amount', 0))}\n"
+        f"📅 日付    : {pending['date_str']}\n"
+        f"🏪 支払先  : {r.get('payee', '') or '—'}\n"
+        f"🗂 カテゴリ: {pending['category'] or '—'}\n"
+        f"💳 支払方法: {r.get('payment_method', '') or '—'}\n"
+        f"📝 メモ    : {r.get('memo', '') or '—'}\n"
+        f"{'─'*22}\n"
+        f"経費・売上どちらで記帳しますか？"
+    )
+
+
+def _confirm_keyboard() -> InlineKeyboardMarkup:
+    """確認画面のボタン（4択）。"""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💸 経費で記帳", callback_data="confirm_expense"),
+            InlineKeyboardButton("💰 売上で記帳", callback_data="confirm_revenue"),
+        ],
+        [
+            InlineKeyboardButton("✏️ 編集する",   callback_data="edit_menu"),
+            InlineKeyboardButton("❌ キャンセル", callback_data="cancel"),
+        ],
+    ])
+
+
+def _edit_keyboard() -> InlineKeyboardMarkup:
+    """編集フィールド選択ボタン。"""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📌 名目",     callback_data="edit_name"),
+            InlineKeyboardButton("💴 金額",     callback_data="edit_amount"),
+            InlineKeyboardButton("📅 日付",     callback_data="edit_date"),
+        ],
+        [
+            InlineKeyboardButton("🗂 カテゴリ", callback_data="edit_category"),
+            InlineKeyboardButton("🏪 支払先",   callback_data="edit_payee"),
+            InlineKeyboardButton("💳 支払方法", callback_data="edit_method"),
+        ],
+        [
+            InlineKeyboardButton("📝 メモ",     callback_data="edit_memo"),
+            InlineKeyboardButton("← 戻る",      callback_data="back_to_confirm"),
+        ],
+    ])
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await auth_check(update):
         return
 
-    await update.message.reply_text("レシートを解析中...")
+    await update.message.reply_text("🔍 レシートを解析中...")
 
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
@@ -167,14 +237,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     compressed = compress_image(raw_bytes)
     orig_kb = len(raw_bytes) // 1024
     comp_kb = len(compressed) // 1024
-    ratio   = len(compressed) / max(len(raw_bytes), 1) * 100
 
     # Gemini Flash で OCR
     result = parse_receipt_from_bytes(compressed)
     if "error" in result:
         await update.message.reply_text(
-            f"解析に失敗しました: {result['error']}\n\n"
-            "手動入力: 支出 50000 食費 ランチ"
+            f"❌ 解析に失敗しました: {result['error']}\n\n"
+            "手動入力例: 支出 50000 食費 ランチ"
         )
         return
 
@@ -187,12 +256,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         categories,
     )
 
+    # レシートの日付を使用（なければ今日）→ 自動的に正しいyear/monthに記帳される
     date_str = result.get("date") or datetime.now().strftime("%Y-%m-%d")
     receipt_filename = (
         f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{photo.file_id[:8]}.jpg"
     )
 
-    # メモリに保持（確定ボタンが押されるまで Drive にはアップロードしない）
+    # メモリに保持
     user_id = update.effective_user.id
     _pending[user_id] = {
         "result":           result,
@@ -200,50 +270,80 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "compressed_bytes": compressed,
         "receipt_filename": receipt_filename,
         "date_str":         date_str,
+        "editing_field":    None,
+        "image_info":       f"{orig_kb}KB → {comp_kb}KB",
     }
 
-    text = (
-        f"解析結果\n{'─'*20}\n"
-        f"名目: {result.get('name', '不明')}\n"
-        f"金額: {fmt_idr(result.get('amount', 0))}\n"
-        f"日付: {date_str}\n"
-        f"支払先: {result.get('payee', '')}\n"
-        f"カテゴリ: {cat_name}\n"
-        f"支払い: {result.get('payment_method', '不明')}\n"
-        f"メモ: {result.get('memo', '')}\n"
-        f"{'─'*20}\n"
-        f"画像: {orig_kb}KB → {comp_kb}KB ({ratio:.0f}%)\n\n"
-        f"この内容で記帳しますか？"
+    await update.message.reply_text(
+        _format_confirmation(_pending[user_id]),
+        reply_markup=_confirm_keyboard(),
     )
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("記帳する",   callback_data="confirm_expense"),
-        InlineKeyboardButton("キャンセル", callback_data="cancel_expense"),
-    ]])
-    await update.message.reply_text(text, reply_markup=keyboard)
 
+
+# ── コールバック処理 ──────────────────────────────────────────────────────────
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = update.effective_user.id
+    pending = _pending.get(user_id)
 
-    if query.data == "cancel_expense":
+    # ── キャンセル
+    if query.data == "cancel":
         _pending.pop(user_id, None)
-        await query.edit_message_text("キャンセルしました。")
+        await query.edit_message_text("❌ キャンセルしました。")
         return
 
-    if query.data == "confirm_expense":
-        pending = _pending.pop(user_id, None)
+    # ── 編集メニューを表示
+    if query.data == "edit_menu":
         if not pending:
-            await query.edit_message_text("タイムアウトしました。もう一度送信してください。")
+            await query.edit_message_text("タイムアウトしました。もう一度写真を送ってください。")
             return
+        await query.edit_message_text(
+            _format_confirmation(pending) + "\n\n✏️ 編集するフィールドを選んでください：",
+            reply_markup=_edit_keyboard(),
+        )
+        return
+
+    # ── 編集メニューから確認画面に戻る
+    if query.data == "back_to_confirm":
+        if not pending:
+            await query.edit_message_text("タイムアウトしました。もう一度写真を送ってください。")
+            return
+        pending["editing_field"] = None
+        await query.edit_message_text(
+            _format_confirmation(pending),
+            reply_markup=_confirm_keyboard(),
+        )
+        return
+
+    # ── フィールド編集開始（edit_name / edit_amount / ...）
+    if query.data.startswith("edit_"):
+        field = query.data[5:]  # "name", "amount", "date" など
+        if not pending:
+            await query.edit_message_text("タイムアウトしました。もう一度写真を送ってください。")
+            return
+        pending["editing_field"] = field
+        label = _FIELD_LABELS.get(field, field)
+        await query.edit_message_text(
+            f"✏️ 新しい「{label}」を入力してください：\n"
+            f"（現在の値: {_current_value(pending, field)}）"
+        )
+        return
+
+    # ── 記帳確定（経費 or 売上）
+    if query.data in ("confirm_expense", "confirm_revenue"):
+        if not pending:
+            await query.edit_message_text("タイムアウトしました。もう一度写真を送ってください。")
+            return
+        _pending.pop(user_id, None)
 
         result   = pending["result"]
         cat_name = pending["category"]
         date_str = pending["date_str"]
         cat_id   = upsert_category(cat_name) if cat_name else None
 
-        # Google Drive へアップロード（ローカルには保存しない）
+        # Google Drive へアップロード（日付フォルダに保存）
         drive_id = upload_receipt_bytes(
             pending["compressed_bytes"],
             pending["receipt_filename"],
@@ -251,35 +351,119 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         receipt_ref = f"gdrive:{drive_id}" if drive_id else ""
 
-        insert_expense(
-            name=result.get("name") or "（名目なし）",
-            amount=float(result.get("amount") or 0),
-            date=date_str,
-            category_id=cat_id,
-            payment_method=result.get("payment_method"),
-            payee=result.get("payee"),
-            memo=result.get("memo"),
-            receipt_path=receipt_ref,
-        )
+        name   = result.get("name") or "（名目なし）"
+        amount = float(result.get("amount") or 0)
+        payee  = result.get("payee") or ""
+        memo   = result.get("memo") or ""
+        method = result.get("payment_method") or ""
 
-        dt = datetime.strptime(date_str, "%Y-%m-%d")
-        write_all_notes(dt.year, dt.month)
+        if query.data == "confirm_expense":
+            insert_expense(
+                name=name,
+                amount=amount,
+                date=date_str,
+                category_id=cat_id,
+                payment_method=method,
+                payee=payee,
+                memo=memo,
+                receipt_path=receipt_ref,
+            )
+            type_label = "💸 経費"
+        else:
+            insert_revenue(
+                name=name,
+                amount=amount,
+                date=date_str,
+                student_name=payee,  # 売上の場合は支払先→student_name
+                memo=memo,
+                receipt_path=receipt_ref,
+            )
+            type_label = "💰 売上"
 
-        drive_note = " ☁️Drive保存済" if drive_id else ""
+        # レシートの日付でObsidianノートを更新
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            write_all_notes(dt.year, dt.month)
+        except Exception:
+            pass
+
+        drive_note = " ☁️" if drive_id else ""
         await query.edit_message_text(
-            f"記帳しました！{drive_note}\n"
-            f"{result.get('name', '')} — {fmt_idr(result.get('amount', 0))}"
+            f"✅ {type_label}で記帳しました！{drive_note}\n"
+            f"{'─'*22}\n"
+            f"📌 {name}\n"
+            f"💴 {fmt_idr(amount)}\n"
+            f"📅 {date_str}（{date_str[:7]} に記帳）"
         )
 
 
-# ── テキスト手動入力 ──────────────────────────────────────────────────────────
-# 形式: 支出 <金額> <カテゴリ> [メモ]
-#       収入 <金額> <名前> [メモ]
+def _current_value(pending: dict, field: str) -> str:
+    """現在のフィールド値を文字列で返す（編集ヒント表示用）。"""
+    r = pending["result"]
+    mapping = {
+        "name":     r.get("name", ""),
+        "amount":   str(int(r.get("amount", 0))),
+        "date":     pending.get("date_str", ""),
+        "category": pending.get("category", ""),
+        "payee":    r.get("payee", ""),
+        "method":   r.get("payment_method", ""),
+        "memo":     r.get("memo", ""),
+    }
+    return mapping.get(field, "") or "（未設定）"
+
+
+# ── テキスト入力処理（フィールド編集 & 手動記帳）────────────────────────────
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await auth_check(update):
         return
-    parts = update.message.text.strip().split()
+
+    user_id = update.effective_user.id
+    pending = _pending.get(user_id)
+    text_input = update.message.text.strip()
+
+    # ─ フィールド編集中の入力を受け取る
+    if pending and pending.get("editing_field"):
+        field = pending["editing_field"]
+        r = pending["result"]
+
+        if field == "name":
+            r["name"] = text_input
+        elif field == "amount":
+            try:
+                r["amount"] = float(text_input.replace(",", "").replace(".", ""))
+            except ValueError:
+                await update.message.reply_text("❌ 金額は数字で入力してください（例: 50000）")
+                return
+        elif field == "date":
+            # YYYY-MM-DD 形式に正規化
+            raw = text_input.replace("/", "-").replace(".", "-")
+            try:
+                datetime.strptime(raw[:10], "%Y-%m-%d")
+                pending["date_str"] = raw[:10]
+            except ValueError:
+                await update.message.reply_text("❌ 日付は YYYY-MM-DD 形式で入力してください（例: 2026-04-17）")
+                return
+        elif field == "category":
+            pending["category"] = text_input
+        elif field == "payee":
+            r["payee"] = text_input
+        elif field == "method":
+            r["payment_method"] = text_input
+        elif field == "memo":
+            r["memo"] = text_input
+
+        pending["editing_field"] = None
+
+        # 更新後の確認画面を再表示
+        await update.message.reply_text(
+            "✅ 更新しました。\n\n" + _format_confirmation(pending),
+            reply_markup=_confirm_keyboard(),
+        )
+        return
+
+    # ─ 手動テキスト記帳（例: 支出 50000 食費 ランチ）
+    parts = text_input.split()
     if len(parts) < 3:
         return
 
@@ -298,11 +482,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cat_id = upsert_category(label)
         insert_expense(name=memo or label, amount=amount, date=today,
                        category_id=cat_id, memo=memo)
-        await update.message.reply_text(f"支出を記帳しました\n{label}: {fmt_idr(amount)}")
+        await update.message.reply_text(
+            f"💸 支出を記帳しました\n{label}: {fmt_idr(amount)}"
+        )
 
     elif record_type in ("収入", "売上", "revenue"):
         insert_revenue(name=label, amount=amount, date=today, memo=memo)
-        await update.message.reply_text(f"収入を記帳しました\n{label}: {fmt_idr(amount)}")
+        await update.message.reply_text(
+            f"💰 収入を記帳しました\n{label}: {fmt_idr(amount)}"
+        )
 
 
 # ── ハンドラー登録 ────────────────────────────────────────────────────────────
