@@ -293,19 +293,32 @@
   <nav>
     <a class="nav-brand" href="{{ url_for('web.dashboard') }}">{{ company_name }}</a>
     <ul class="nav-links">
-      <li><a href="{{ url_for('web.dashboard') }}" {% if page == 'dashboard' %}class="active"{% endif %}>ダッシュボード</a></li>
-      <li><a href="{{ url_for('web.expenses_list') }}" {% if page == 'expenses' %}class="active"{% endif %}>経費</a></li>
-      <li><a href="{{ url_for('web.revenue_list') }}" {% if page == 'revenue' %}class="active"{% endif %}>収入</a></li>
-      <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories' %}class="active"{% endif %}>勘定科目</a></li>
-      <li><a href="{{ url_for('web.receipt_ocr') }}" {% if page == 'receipt_ocr' %}class="active"{% endif %}>📷レシート</a></li>
-      <li><a href="{{ url_for('web.budget') }}" {% if page == 'budget' %}class="active"{% endif %}>予算</a></li>
-      <li><a href="{{ url_for('web.financial_report') }}" {% if page == 'financial' %}class="active"{% endif %}>決算書</a></li>
+      <li><a href="{{ url_for('web.dashboard') }}"       {% if page == 'dashboard'   %}class="active"{% endif %}>{{ T.nav_dashboard }}</a></li>
+      <li><a href="{{ url_for('web.expenses_list') }}"   {% if page == 'expenses'    %}class="active"{% endif %}>{{ T.nav_expenses }}</a></li>
+      <li><a href="{{ url_for('web.revenue_list') }}"    {% if page == 'revenue'     %}class="active"{% endif %}>{{ T.nav_revenue }}</a></li>
+      <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories'  %}class="active"{% endif %}>{{ T.nav_categories }}</a></li>
+      <li><a href="{{ url_for('web.receipt_ocr') }}"     {% if page == 'receipt_ocr' %}class="active"{% endif %}>{{ T.nav_receipt }}</a></li>
+      <li><a href="{{ url_for('web.budget') }}"          {% if page == 'budget'      %}class="active"{% endif %}>{{ T.nav_budget }}</a></li>
+      <li><a href="{{ url_for('web.financial_report') }}"{% if page == 'financial'   %}class="active"{% endif %}>{{ T.nav_financial }}</a></li>
     </ul>
     <form class="nav-search" method="get" action="{{ url_for('web.search') }}">
-      <input type="search" name="q" placeholder="検索..." value="{{ request.args.get('q', '') }}">
-      <button type="submit">検索</button>
+      <input type="search" name="q" placeholder="{{ T.nav_search_ph }}" value="{{ request.args.get('q', '') }}">
+      <button type="submit">{{ T.nav_search_btn }}</button>
     </form>
-    <a href="{{ url_for('web.logout') }}" style="color:#c5cae9; font-size:.82rem; padding:0 .75rem; text-decoration:none; white-space:nowrap; opacity:.7;">ログアウト</a>
+    <!-- 言語切替 -->
+    <div style="display:flex; align-items:center; gap:.25rem; padding:0 .5rem;">
+      <a href="{{ url_for('web.set_lang', lang='ja') }}"
+         style="font-size:.9rem; padding:.2rem .4rem; border-radius:4px; text-decoration:none;
+                {% if lang == 'ja' %}background:#3b82f6; color:#fff;{% else %}color:#c5cae9; opacity:.6;{% endif %}">
+        🇯🇵
+      </a>
+      <a href="{{ url_for('web.set_lang', lang='id') }}"
+         style="font-size:.9rem; padding:.2rem .4rem; border-radius:4px; text-decoration:none;
+                {% if lang == 'id' %}background:#3b82f6; color:#fff;{% else %}color:#c5cae9; opacity:.6;{% endif %}">
+        🇮🇩
+      </a>
+    </div>
+    <a href="{{ url_for('web.logout') }}" style="color:#c5cae9; font-size:.82rem; padding:0 .75rem; text-decoration:none; white-space:nowrap; opacity:.7;">{{ T.nav_logout }}</a>
   </nav>
 
   <div class="container">

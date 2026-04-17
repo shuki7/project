@@ -24,6 +24,7 @@ from config import (
 )
 from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
 from sync.gdrive import upload_receipt_bytes
+from translations import get_T
 from core.database import (
     # カテゴリ
     get_all_categories, get_category_by_id, upsert_category,
@@ -50,13 +51,20 @@ from core.database import (
 web = Blueprint("web", __name__, url_prefix="/keiri")
 
 
+# ── 言語・翻訳をすべてのテンプレートに注入 ──────────────────────────────────
+@web.context_processor
+def inject_lang():
+    lang = session.get("lang", "ja")
+    return {"lang": lang, "T": get_T(lang)}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 認証
 # ─────────────────────────────────────────────────────────────────────────────
 
 @web.before_request
 def check_auth():
-    open_endpoints = {"web.login", "web.logout", "web.recover"}
+    open_endpoints = {"web.login", "web.logout", "web.recover", "web.set_lang"}
     if request.endpoint in open_endpoints:
         return
     if not session.get("logged_in"):
@@ -84,6 +92,13 @@ def logout():
     session.clear()
     flash("ログアウトしました。", "success")
     return redirect(url_for("web.login"))
+
+
+@web.route("/lang/<lang>")
+def set_lang(lang):
+    if lang in ("ja", "id"):
+        session["lang"] = lang
+    return redirect(request.referrer or url_for("web.dashboard"))
 
 
 @web.route("/recover")
@@ -147,8 +162,22 @@ def inject_globals():
 @web.route("/")
 def dashboard():
     now = datetime.now()
-    year = int(request.args.get("year", now.year))
-    month = now.month
+    year  = int(request.args.get("year",  now.year))
+    month = int(request.args.get("month", now.month))
+    # 範囲チェック
+    if month < 1:  month = 1
+    if month > 12: month = 12
+
+    # 前月・翌月のリンク用
+    if month == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month - 1
+    if month == 12:
+        next_year, next_month = year + 1, 1
+    else:
+        next_year, next_month = year, month + 1
+    is_current_month = (year == now.year and month == now.month)
 
     monthly_rev = sum_revenue(year, month)
     monthly_exp = sum_expenses(year, month)
@@ -198,6 +227,9 @@ def dashboard():
     return render_template(
         "dashboard.html",
         year=year, month=month,
+        prev_year=prev_year, prev_month=prev_month,
+        next_year=next_year, next_month=next_month,
+        is_current_month=is_current_month,
         monthly_rev=monthly_rev, monthly_exp=monthly_exp, monthly_profit=monthly_profit,
         annual_rev=annual_rev, annual_exp=annual_exp, annual_profit=annual_profit,
         summary=summary,

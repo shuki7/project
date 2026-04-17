@@ -30,41 +30,67 @@
    onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(15,52,96,.35)'">
   <span style="font-size:2rem; line-height:1;">📷</span>
   <div>
-    <div style="font-size:1rem; font-weight:700; letter-spacing:.02em;">レシートで自動記帳</div>
-    <div style="font-size:.8rem; opacity:.8; margin-top:.15rem;">
-      写真をアップロードするだけ — Gemini AI が金額・日付・カテゴリを自動入力
-    </div>
+    <div style="font-size:1rem; font-weight:700; letter-spacing:.02em;">{{ T.btn_receipt_ocr }}</div>
+    <div style="font-size:.8rem; opacity:.8; margin-top:.15rem;">{{ T.btn_receipt_sub }}</div>
   </div>
   <span style="margin-left:auto; font-size:1.25rem; opacity:.7;">›</span>
 </a>
 
 <div class="page-header">
-  <h1>ダッシュボード</h1>
+  <h1>{{ T.dash_title }}</h1>
   <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
-    <a href="{{ url_for('web.expenses_new') }}" class="btn btn-danger">＋ 経費を追加</a>
-    <a href="{{ url_for('web.revenue_new') }}" class="btn btn-success">＋ 収入を追加</a>
-    <a href="{{ url_for('web.financial_report', year=year) }}" class="btn btn-edit">📊 決算書</a>
-    <a href="{{ url_for('web.export_expenses_csv', year=year) }}" class="btn btn-edit">⬇ CSV</a>
+    <a href="{{ url_for('web.expenses_new') }}" class="btn btn-danger">{{ T.btn_add_expense }}</a>
+    <a href="{{ url_for('web.revenue_new') }}" class="btn btn-success">{{ T.btn_add_revenue }}</a>
+    <a href="{{ url_for('web.financial_report', year=year) }}" class="btn btn-edit">{{ T.btn_financial }}</a>
+    <a href="{{ url_for('web.export_expenses_csv', year=year) }}" class="btn btn-edit">{{ T.btn_csv }}</a>
   </div>
 </div>
 
-<!-- 年選択 -->
-<form method="get" style="margin-bottom:1.2rem; display:flex; align-items:center; gap:.75rem;">
-  <label for="year-select" style="margin:0; font-size:.9rem;">表示年度：</label>
-  <select name="year" id="year-select" onchange="this.form.submit()" style="width:auto; padding:.4rem .65rem;">
-    {% for y in [2025, 2026, 2027] %}
-      <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
-    {% endfor %}
-  </select>
-</form>
+<!-- 年選択 + 月ナビ -->
+<div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.2rem;">
+  <form method="get" style="display:flex; align-items:center; gap:.5rem; margin:0;">
+    <input type="hidden" name="month" value="{{ month }}">
+    <label for="year-select" style="margin:0; font-size:.9rem;">{{ T.btn_year_label }}</label>
+    <select name="year" id="year-select" onchange="this.form.submit()" style="width:auto; padding:.4rem .65rem;">
+      {% for y in [2025, 2026, 2027] %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <!-- 月ナビ -->
+  <div style="display:flex; align-items:center; gap:.4rem;">
+    <a href="{{ url_for('web.dashboard', year=prev_year, month=prev_month) }}"
+       class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem;">{{ T.month_prev }}</a>
+
+    <span style="font-size:1rem; font-weight:700; color:#16213e; min-width:7rem; text-align:center;">
+      {{ T.months[month-1] }}
+      {% if lang == 'ja' %}{{ year }}年{% else %}{{ year }}{% endif %}
+    </span>
+
+    {% if not is_current_month %}
+    <a href="{{ url_for('web.dashboard', year=next_year, month=next_month) }}"
+       class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem;">{{ T.month_next }}</a>
+    {% else %}
+    <span class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem; opacity:.35; cursor:default;">{{ T.month_next }}</span>
+    {% endif %}
+
+    {% if not is_current_month %}
+    <a href="{{ url_for('web.dashboard') }}"
+       style="font-size:.8rem; color:#3b82f6; text-decoration:none; margin-left:.25rem;">↩ {{ T.month_today }}</a>
+    {% endif %}
+  </div>
+</div>
 
 <!-- 今月サマリー（前月比付き）-->
-<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">今月（{{ year }}年{{ month }}月）</h2>
+<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">
+  {% if lang == 'ja' %}{{ year }}年{{ month }}月{% else %}{{ T.months[month-1] }} {{ year }}{% endif %}
+</h2>
 <div class="kpi-grid" style="margin-bottom:1.5rem;">
   {% set rev_diff = monthly_rev - prev.revenue %}
   {% set exp_diff = monthly_exp - prev.expenses %}
   <div class="kpi-card">
-    <div class="kpi-label">今月収入</div>
+    <div class="kpi-label">{{ T.kpi_revenue }}</div>
     <div class="kpi-value positive">{{ fmt_idr(monthly_rev) }}</div>
     <div class="kpi-sub {% if rev_diff >= 0 %}arrow-up{% else %}arrow-down{% endif %}">
       {% if rev_diff >= 0 %}▲{% else %}▼{% endif %}
@@ -73,7 +99,7 @@
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">今月支出</div>
+    <div class="kpi-label">{{ T.kpi_expenses }}</div>
     <div class="kpi-value negative">{{ fmt_idr(monthly_exp) }}</div>
     <div class="kpi-sub {% if exp_diff <= 0 %}arrow-up{% else %}arrow-down{% endif %}">
       {% if exp_diff >= 0 %}▲{% else %}▼{% endif %}
@@ -82,20 +108,20 @@
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">今月損益</div>
+    <div class="kpi-label">{{ T.kpi_profit }}</div>
     <div class="kpi-value {% if monthly_profit >= 0 %}positive{% else %}negative{% endif %}">{{ fmt_idr(monthly_profit) }}</div>
-    <div class="kpi-sub text-muted">前月比</div>
+    <div class="kpi-sub text-muted">{{ T.kpi_prev }}</div>
   </div>
   {% for name, cnt in course_counts.items() %}
   <div class="kpi-card" style="border-left:4px solid #e2c97e;">
     <div class="kpi-label">{{ name }}</div>
     <div class="kpi-value neutral">{{ cnt }} <span style="font-size:.9rem; font-weight:400;">名</span></div>
-    <div class="kpi-sub text-muted">今月支払い</div>
+    <div class="kpi-sub text-muted">{{ T.kpi_job }}</div>
   </div>
   {% endfor %}
   {% if recurring.total > 0 %}
   <div class="kpi-card" style="border-left:4px solid #c5cae9;">
-    <div class="kpi-label">定期支出</div>
+    <div class="kpi-label">{{ T.chart_recurring }}</div>
     <div class="kpi-value negative">{{ fmt_idr(recurring.total) }}</div>
     <div class="kpi-sub text-muted">{{ recurring.items|length }}件</div>
   </div>
@@ -103,18 +129,20 @@
 </div>
 
 <!-- 年間サマリー -->
-<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">年間（{{ year }}年）</h2>
+<h2 style="font-size:1rem; font-weight:700; color:#555; margin-bottom:.75rem; text-transform:uppercase; letter-spacing:.05em;">
+  {% if lang == 'ja' %}{{ T.annual.replace('{year}', year|string) }}{% else %}{{ T.annual.replace('{year}', year|string) }}{% endif %}
+</h2>
 <div class="grid-3" style="margin-bottom:1.5rem;">
   <div class="card">
-    <div class="card-title">年間収入</div>
+    <div class="card-title">{{ T.kpi_ann_rev }}</div>
     <div class="card-value positive">{{ fmt_idr(annual_rev) }}</div>
   </div>
   <div class="card">
-    <div class="card-title">年間支出</div>
+    <div class="card-title">{{ T.kpi_ann_exp }}</div>
     <div class="card-value negative">{{ fmt_idr(annual_exp) }}</div>
   </div>
   <div class="card">
-    <div class="card-title">年間損益</div>
+    <div class="card-title">{{ T.kpi_ann_prf }}</div>
     <div class="card-value {% if annual_profit >= 0 %}positive{% else %}negative{% endif %}">
       {{ fmt_idr(annual_profit) }}
     </div>
@@ -125,12 +153,12 @@
 <div style="display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1.5rem;">
   <!-- 月次棒グラフ -->
   <div class="card" style="padding:1rem;">
-    <div class="card-title">{{ year }}年 月次推移</div>
+    <div class="card-title">{{ T.chart_monthly.replace('{year}', year|string) }}</div>
     <canvas id="barChart" height="120"></canvas>
   </div>
   <!-- 収入ランキング -->
   <div class="card" style="padding:1rem;">
-    <div class="card-title">今月 収入ランキング</div>
+    <div class="card-title">{{ T.chart_ranking }}</div>
     {% if ranking %}
     {% for r in ranking %}
     <div style="margin-bottom:.6rem;">
@@ -144,7 +172,7 @@
     </div>
     {% endfor %}
     {% else %}
-    <p class="text-muted" style="font-size:.85rem;">今月の収入データなし</p>
+    <p class="text-muted" style="font-size:.85rem;">{{ T.tab_no_revenue }}</p>
     {% endif %}
   </div>
 </div>
@@ -152,13 +180,13 @@
 <!-- カテゴリドーナツ + 予算進捗 -->
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
   <div class="card" style="padding:1rem;">
-    <div class="card-title">今月 支出内訳</div>
+    <div class="card-title">{{ T.chart_cat }}</div>
     <canvas id="donutChart" height="160"></canvas>
   </div>
   <div class="card" style="padding:1rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
-      <div class="card-title" style="margin:0;">予算 vs 実績</div>
-      <a href="{{ url_for('web.budget', year=year, month=month) }}" class="btn btn-edit btn-sm">設定</a>
+      <div class="card-title" style="margin:0;">{{ T.chart_budget }}</div>
+      <a href="{{ url_for('web.budget', year=year, month=month) }}" class="btn btn-edit btn-sm">{{ T.chart_budget_set }}</a>
     </div>
     {% set has_budget = budget_progress | selectattr('budget', 'gt', 0) | list %}
     {% if has_budget %}
@@ -172,7 +200,7 @@
       </div>
       {% endfor %}
     {% else %}
-    <p class="text-muted" style="font-size:.85rem;">予算未設定 — <a href="{{ url_for('web.budget', year=year, month=month) }}">設定する</a></p>
+    <p class="text-muted" style="font-size:.85rem;">{{ T.budget_not_set }} <a href="{{ url_for('web.budget', year=year, month=month) }}">{{ T.budget_set_link }}</a></p>
     {% endif %}
   </div>
 </div>
@@ -185,9 +213,9 @@
     data: {
       labels: cd.labels,
       datasets: [
-        { label:'収入', data: cd.revenue, backgroundColor:'rgba(45,106,79,.7)', borderRadius:4 },
-        { label:'支出', data: cd.expenses, backgroundColor:'rgba(193,18,31,.6)', borderRadius:4 },
-        { label:'損益', data: cd.profit, type:'line', borderColor:'#e2c97e', backgroundColor:'rgba(226,201,126,.15)', tension:.4, fill:true, pointRadius:3, borderWidth:2 },
+        { label:'{{ T.chart_rev_label }}', data: cd.revenue, backgroundColor:'rgba(45,106,79,.7)', borderRadius:4 },
+        { label:'{{ T.chart_exp_label }}', data: cd.expenses, backgroundColor:'rgba(193,18,31,.6)', borderRadius:4 },
+        { label:'{{ T.chart_prf_label }}', data: cd.profit, type:'line', borderColor:'#e2c97e', backgroundColor:'rgba(226,201,126,.15)', tension:.4, fill:true, pointRadius:3, borderWidth:2 },
       ]
     },
     options: {
@@ -224,18 +252,18 @@
   <div id="dash-tabs" style="display:flex; background:#16213e; border-bottom:2px solid #0f3460;">
     <button class="dash-tab active" data-tab="tatekae" onclick="switchTab('tatekae', this)"
       style="padding:.7rem 1.2rem; background:none; border:none; color:#e2c97e; font-weight:700; font-size:.9rem; cursor:pointer; border-bottom:3px solid #e2c97e;">
-      ⚠ 立替え
+      ⚠ {{ T.tab_tatekae }}
       {% if tatekae_list %}
         <span style="background:#c1121f; color:#fff; border-radius:10px; padding:.1rem .45rem; font-size:.75rem; margin-left:.3rem;">{{ tatekae_list|length }}</span>
       {% endif %}
     </button>
     <button class="dash-tab" data-tab="recent" onclick="switchTab('recent', this)"
       style="padding:.7rem 1.2rem; background:none; border:none; color:#c5cae9; font-weight:600; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent;">
-      直近10件
+      {{ T.tab_recent }}
     </button>
     <button class="dash-tab" data-tab="monthly" onclick="switchTab('monthly', this)"
       style="padding:.7rem 1.2rem; background:none; border:none; color:#c5cae9; font-weight:600; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent;">
-      今月の支出 <span style="font-size:.8rem; opacity:.7;">{{ year }}/{{ '%02d'|format(month) }}</span>
+      {{ T.tab_month_exp }} <span style="font-size:.8rem; opacity:.7;">{{ year }}/{{ '%02d'|format(month) }}</span>
     </button>
   </div>
 
@@ -243,13 +271,13 @@
   <div id="tab-tatekae" class="tab-panel" style="padding:1rem;">
     {% if tatekae_list %}
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem; flex-wrap:wrap; gap:.5rem;">
-      <span style="font-size:.9rem; color:#555;">未精算合計：<strong class="negative">{{ fmt_idr(tatekae_total) }}</strong>（{{ tatekae_list|length }}件）</span>
+      <span style="font-size:.9rem; color:#555;">{{ T.tab_tatekae_total }}：<strong class="negative">{{ fmt_idr(tatekae_total) }}</strong>（{{ tatekae_list|length }}件）</span>
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>日付</th><th>名目</th><th>支払先</th>
-          <th style="text-align:right;">金額</th><th>勘定科目</th><th></th>
+          <th>{{ T.th_date }}</th><th>{{ T.th_name }}</th><th>{{ T.th_payee }}</th>
+          <th style="text-align:right;">{{ T.th_amount }}</th><th>{{ T.th_category }}</th><th></th>
         </tr></thead>
         <tbody id="tatekae-rows">
           {% for e in tatekae_list %}
@@ -262,7 +290,7 @@
             <td class="actions">
               <form method="post" action="{{ url_for('web.expenses_settle', expense_id=e.id) }}"
                     onsubmit="return confirm('「{{ e.name }}」を精算済み（TRANSFER）に変更しますか？')">
-                <button type="submit" class="btn btn-success btn-sm">✓ 精算済み</button>
+                <button type="submit" class="btn btn-success btn-sm">{{ T.btn_settle }}</button>
               </form>
             </td>
           </tr>
@@ -273,11 +301,11 @@
     {% if tatekae_list|length > 10 %}
     <button onclick="toggleExtra('tatekae')" id="btn-tatekae"
       style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
-      ▼ もっと見る（{{ tatekae_list|length - 10 }}件）
+      {{ T.tab_see_more.replace('{n}', (tatekae_list|length - 10)|string) }}
     </button>
     {% endif %}
     {% else %}
-    <p style="color:#888; padding:.5rem 0; text-align:center;">立替えはありません ✓</p>
+    <p style="color:#888; padding:.5rem 0; text-align:center;">{{ T.tab_no_tatekae }} ✓</p>
     {% endif %}
   </div>
 
@@ -287,8 +315,8 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>日付</th><th>名目</th><th>支払先</th>
-          <th style="text-align:right;">金額</th><th>支払方法</th><th></th>
+          <th>{{ T.th_date }}</th><th>{{ T.th_name }}</th><th>{{ T.th_payee }}</th>
+          <th style="text-align:right;">{{ T.th_amount }}</th><th>{{ T.th_method }}</th><th></th>
         </tr></thead>
         <tbody>
           {% for e in recent_expenses %}
@@ -298,7 +326,7 @@
             <td class="text-muted">{{ e.payee or '—' }}</td>
             <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
             <td>{% if e.payment_method == '立替え' %}<span style="color:#c1121f;font-weight:600;">立替え</span>{% else %}{{ e.payment_method or '—' }}{% endif %}</td>
-            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">編集</a></td>
+            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -307,11 +335,11 @@
     {% if recent_expenses|length > 10 %}
     <button onclick="toggleExtra('recent')" id="btn-recent"
       style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
-      ▼ もっと見る（{{ recent_expenses|length - 10 }}件）
+      {{ T.tab_see_more.replace('{n}', (recent_expenses|length - 10)|string) }}
     </button>
     {% endif %}
     {% else %}
-    <p style="color:#888; padding:.5rem 0; text-align:center;">経費データがありません</p>
+    <p style="color:#888; padding:.5rem 0; text-align:center;">{{ T.tab_no_recent }}</p>
     {% endif %}
   </div>
 
@@ -320,14 +348,14 @@
     {% if month_expenses %}
     <div style="margin-bottom:.75rem;">
       <span style="font-size:.9rem; color:#555;">
-        合計：<strong class="negative">{{ fmt_idr(month_expenses | sum(attribute='amount')) }}</strong>（{{ month_expenses|length }}件）
+        {{ T.tab_total }}：<strong class="negative">{{ fmt_idr(month_expenses | sum(attribute='amount')) }}</strong>（{{ month_expenses|length }}件）
       </span>
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>日付</th><th>名目</th><th>支払先</th>
-          <th style="text-align:right;">金額</th><th>勘定科目</th><th></th>
+          <th>{{ T.th_date }}</th><th>{{ T.th_name }}</th><th>{{ T.th_payee }}</th>
+          <th style="text-align:right;">{{ T.th_amount }}</th><th>{{ T.th_category }}</th><th></th>
         </tr></thead>
         <tbody>
           {% for e in month_expenses %}
@@ -337,7 +365,7 @@
             <td class="text-muted">{{ e.payee or '—' }}</td>
             <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
             <td class="text-muted">{{ e.category_name or '—' }}</td>
-            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">編集</a></td>
+            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -346,11 +374,11 @@
     {% if month_expenses|length > 10 %}
     <button onclick="toggleExtra('monthly')" id="btn-monthly"
       style="margin-top:.75rem; background:none; border:1px solid #dde1ea; border-radius:6px; padding:.4rem 1rem; font-size:.85rem; color:#555; cursor:pointer; width:100%;">
-      ▼ もっと見る（{{ month_expenses|length - 10 }}件）
+      {{ T.tab_see_more.replace('{n}', (month_expenses|length - 10)|string) }}
     </button>
     {% endif %}
     {% else %}
-    <p style="color:#888; padding:.5rem 0; text-align:center;">今月の支出はありません</p>
+    <p style="color:#888; padding:.5rem 0; text-align:center;">{{ T.tab_no_recent }}</p>
     {% endif %}
   </div>
 </div>
