@@ -1,58 +1,47 @@
-"""
-cPanel Passenger WSGI entry point for shuki.link/project
-
-PassengerBaseURI=/project により Passenger は PATH_INFO から /project を剥がす。
-内部では:
-  - project Blueprint   →  / (ルート)
-  - web Blueprint       →  /keiri (経理は内部で /keiri プレフィックス)
-"""
-
 import sys
 import os
-from pathlib import Path
+import traceback
 
-os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ.setdefault("PYTHONUTF8", "1")
+def application(environ, start_response):
+    try:
+        # このファイルがあるディレクトリをパスに追加
+        _here = os.path.dirname(os.path.abspath(__file__))
+        if _here not in sys.path:
+            sys.path.insert(0, _here)
+            
+        # 文字コード設定
+        os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+        os.environ.setdefault("PYTHONUTF8", "1")
 
-_here = Path(__file__).parent
-sys.path.insert(0, str(_here))
+        # mainモジュールの読み込み
+        try:
+            from main import application as _flask_app
+        except BaseException:
+            raise Exception("Failed to import main.py:\n" + traceback.format_exc())
 
-# モジュールキャッシュをクリアして強制リロード
-for m in list(sys.modules.keys()):
-    if any(p in m for p in ["main", "core", "sync", "web_app", "project_app",
-                            "translations", "config", "reports", "bot"]):
-        del sys.modules[m]
+        # PATH_INFO 調整
+        path = environ.get("PATH_INFO", "") or ""
+        if path.startswith("/project"):
+            environ["PATH_INFO"] = path[len("/project"):] or "/"
+        environ["SCRIPT_NAME"] = "/project"
+        
+        # Flask実行
+        result = _flask_app(environ, start_response)
+        return list(result)
 
-try:
-    from main import application as _flask_app  # noqa: E402
-except Exception:
-    import traceback
-    import sys
-    def application(environ, start_response):
+    except BaseException:
         status = "500 Internal Server Error"
         response_headers = [("Content-type", "text/plain; charset=utf-8")]
         start_response(status, response_headers)
-        err = f"Python {sys.version}\n\n{traceback.format_exc()}"
-        return [err.encode("utf-8")]
-else:
-    def application(environ, start_response):
-        try:
-            # PATH_INFO 調整
-            path = environ.get("PATH_INFO", "") or ""
-            if path.startswith("/project"):
-                environ["PATH_INFO"] = path[len("/project"):] or "/"
-            environ["SCRIPT_NAME"] = "/project"
-            
-            # Flask app を実行し、レスポンスを取得
-            result = _flask_app(environ, start_response)
-            # イテレータをリスト化して、レンダリング時のエラーもここで捕まえる
-            return list(result)
-            
-        except Exception:
-            import traceback
-            import sys
-            status = "500 Internal Server Error"
-            response_headers = [("Content-type", "text/plain; charset=utf-8")]
-            start_response(status, response_headers)
-            err = f"Python {sys.version}\n\n{traceback.format_exc()}"
-            return [err.encode("utf-8")]
+        
+        # 詳細なエラー情報を出力
+        error_info = [
+            "SSP Project - Critical Error\n",
+            "===========================\n",
+            "Python Version: " + sys.version + "\n",
+            "Current Path: " + os.getcwd() + "\n",
+            "System Path: " + str(sys.path) + "\n",
+            "Error Traceback:\n",
+            traceback.format_exc()
+        ]
+        return ["".join(error_info).encode("utf-8")]
