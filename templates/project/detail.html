@@ -19,7 +19,7 @@
   }
   .project-header .emoji { font-size: 3rem; line-height: 1; }
   .project-header .name { font-size: 1.7rem; font-weight: 700; color: #16213e; }
-  .project-header .desc { color: #555; line-height: 1.6; margin-top: .3rem; }
+  .project-header .desc { color: #555; line-height: 1.6; margin-top: .3rem; white-space: pre-wrap; }
   .project-header-actions {
     margin-top: 1rem;
     display: flex;
@@ -85,7 +85,7 @@
   </div>
   <div class="project-header-actions">
     <a href="{{ url_for('project.edit_project', project_id=project.id) }}" class="btn btn-sm btn-edit">✏️ 編集</a>
-    <a href="{{ url_for('project.list_projects') }}" class="btn btn-sm btn-edit">← 一覧へ戻る</a>
+    <a href="{{ url_for('web.launcher') }}" class="btn btn-sm btn-edit">← プロジェクト管理へ戻る</a>
     {% if project.status == 'archived' %}
       <span class="btn btn-sm" style="background:#c9982e; color:#fff; cursor:default;">📦 アーカイブ済み</span>
       <form method="post" action="{{ url_for('project.archive', project_id=project.id) }}" class="delete-form">
@@ -101,7 +101,9 @@
           onsubmit="return confirm('本当に「{{ project.name }}」を削除しますか？\n（この操作は取り消せません）');">
       <button type="submit" class="btn btn-sm btn-danger">🗑 削除</button>
     </form>
+    <a href="{{ url_for('web.launcher') }}#share-{{ project.id }}" class="btn btn-sm btn-primary" style="background:#3b82f6;">🔗 共有リンク発行</a>
   </div>
+
 </div>
 
 <h2 style="font-size:1.1rem; color:#555; margin-bottom:.8rem;">メニュー</h2>

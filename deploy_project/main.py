@@ -157,6 +157,23 @@ def health():
 # Passenger が要求する WSGI callable
 application = flask_app
 
+# 【データ復旧】プロジェクト説明文の復元
+try:
+    import sqlite3
+    with sqlite3.connect(DB_PATH) as conn:
+        # AXI
+        conn.execute("UPDATE projects SET description = ? WHERE name LIKE ? AND (description IS NULL OR description = '')", 
+            ("Axi.com（アクシードットコム）のプラットフォームを活用するのが、一番利益を生みます。 最高級の条件を提供してもらっており、スプレッドは以下の通りです： 1. ドル円：0.7 2. ポンド円：1.2 さらに、1ロットあたり5ドルのキャッシュバックがIB報酬として入ってきます。 それに加えて、コピートレードの仕組みを使ってシグナルトレーダーとして活躍していけば、決められたパーセンテージ（例えば20%など）を、世界中の多くのトレーダーから利益として受け取れるプロジェクトです。", "%SSP TRADE (AXI)%"))
+        # 福利厚生
+        conn.execute("UPDATE projects SET description = ? WHERE name LIKE ? AND (description IS NULL OR description = '')", 
+            ("OEM初期費用：50万円（税別） 運用コスト：1. 毎月の運用：1人500円から 2. 最低人数：1,000名から 契約条件：1. 最低2年間の契約 2. 2年ごとの更新とする", "%サクセスサポート福利厚生サービス%"))
+        # 生活費
+        conn.execute("UPDATE projects SET description = ? WHERE name LIKE ? AND (description IS NULL OR description = '')", 
+            ("上村修基のバリでの生活費", "%上村修基バリ島生活費%"))
+        conn.commit()
+except Exception:
+    pass
+
 # 【緊急修理】バリジャパンドリーム以外のプロジェクトのDBを分離する（一度だけ実行）
 try:
     import sqlite3
