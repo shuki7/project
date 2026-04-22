@@ -402,7 +402,7 @@
       <li><a href="{{ url_for('web.contacts') }}"       {% if page == 'contacts'    %}class="active"{% endif %}>👥 {{ T.nav_contacts }}</a></li>
       <li><a href="{{ url_for('web.staff') }}"          {% if page == 'staff'       %}class="active"{% endif %}>🧑‍💼 {{ T.nav_staff }}</a></li>
       <li><a href="{{ url_for('web.project_info') }}"   {% if page == 'info'        %}class="active"{% endif %}>📄 {{ T.nav_info }}</a></li>
-      <li><a href="{{ url_for('project.url_list') }}"   {% if page == 'urls'        %}class="active"{% endif %}>🔗 {{ T.nav_urls }}</a></li>
+      <li><a href="{{ url_for('project.url_list_all') }}"   {% if page == 'urls'        %}class="active"{% endif %}>🔗 {{ T.nav_urls }}</a></li>
       {% endif %}
 
       {% if not read_only or 'categories' in allowed_pages %}

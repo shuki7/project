@@ -108,6 +108,19 @@ def main():
             fail += 1
 
     print(f"\n[done] uploaded={ok}  failed={fail}")
+    
+    # Restart Passenger by touching tmp/restart.txt
+    print("\n[restarting passenger]")
+    ensure_dir(ftp, "tmp")
+    try:
+        import io
+        import time
+        restart_content = str(time.time()).encode("utf-8")
+        ftp.storbinary("STOR /tmp/restart.txt", io.BytesIO(restart_content))
+        print("  ✓ tmp/restart.txt touched")
+    except Exception as e:
+        print(f"  ✗ Failed to touch tmp/restart.txt: {e}")
+
     ftp.quit()
     sys.exit(0 if fail == 0 else 1)
 

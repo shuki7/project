@@ -135,7 +135,7 @@
     <a class="nav-brand" href="{{ url_for('web.launcher') }}">📁 プロジェクト管理</a>
     <a class="nav-link {% if page == 'list' %}active{% endif %}" href="{{ url_for('project.list_projects') }}">一覧</a>
     <a class="nav-link {% if page == 'new' %}active{% endif %}" href="{{ url_for('project.new_project') }}">＋ 新規追加</a>
-    <a class="nav-link {% if page == 'urls' %}active{% endif %}" href="{{ url_for('project.url_list') }}">URL一覧</a>
+    <a class="nav-link {% if page == 'urls' %}active{% endif %}" href="{{ url_for('project.url_list_all') }}">URL一覧</a>
     <div class="spacer"></div>
     <a class="nav-link" href="{{ url_for('web.dashboard') }}">経理 (旧)</a>
     <a class="nav-link" href="{{ url_for('web.logout') }}">ログアウト</a>
