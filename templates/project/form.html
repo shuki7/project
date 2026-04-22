@@ -1,0 +1,146 @@
+{% extends "project/_base.html" %}
+{% block title %}{% if project %}プロジェクト編集{% else %}新規プロジェクト{% endif %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-card { max-width: 640px; margin: 0 auto; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: .5rem;
+  }
+  .preview-tile {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background: #f9fafc;
+    border: 1px dashed #cfd6e0;
+  }
+  .preview-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.09);
+    padding: 1.2rem;
+    border-top: 5px solid #16213e;
+  }
+  .preview-emoji { font-size: 2rem; }
+  .preview-name { font-size: 1.1rem; font-weight: 700; color: #16213e; margin: .3rem 0; }
+  .preview-desc { font-size: .85rem; color: #666; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{% if project %}✏️ プロジェクト編集{% else %}＋ 新規プロジェクト{% endif %}</h1>
+  <a href="{% if project %}{{ url_for('project.detail', project_id=project.id) }}{% else %}{{ url_for('project.list_projects') }}{% endif %}"
+     class="btn btn-sm btn-edit">← キャンセル</a>
+</div>
+
+<div class="card form-card">
+  <form method="post" id="projectForm">
+    <div class="form-group">
+      <label for="name">プロジェクト名 <span style="color:#c1121f;">*</span></label>
+      <input type="text" id="name" name="name" required
+             value="{{ project.name if project else '' }}"
+             placeholder="例: BALI JAPAN DREAM">
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="emoji">絵文字（アイコン）</label>
+        <input type="text" id="emoji" name="emoji" maxlength="8"
+               value="{{ project.emoji if project else '' }}"
+               placeholder="🇮🇩">
+      </div>
+      <div class="form-group">
+        <label for="color">カラー</label>
+        <input type="color" id="color" name="color"
+               value="{{ project.color if project else '#16213e' }}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="description">説明</label>
+      <textarea id="description" name="description"
+                placeholder="プロジェクトの目的や概要を記述">{{ project.description if project else '' }}</textarea>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="start_date">開始日</label>
+        <input type="date" id="start_date" name="start_date"
+               value="{{ project.start_date if project else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="client_name">依頼者名</label>
+        <input type="text" id="client_name" name="client_name"
+               value="{{ project.client_name if project else '' }}"
+               placeholder="例: 株式会社〇〇">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="manager_name">担当者名</label>
+      <input type="text" id="manager_name" name="manager_name"
+             value="{{ project.manager_name if project else '' }}"
+             placeholder="例: 上村秀樹">
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="sort_order">並び順</label>
+        <input type="number" id="sort_order" name="sort_order"
+               value="{{ project.sort_order if project else 0 }}">
+      </div>
+      {% if project %}
+      <div class="form-group">
+        <label for="status">ステータス</label>
+        <select id="status" name="status">
+          <option value="active"   {% if project.status == 'active'   %}selected{% endif %}>アクティブ</option>
+          <option value="archived" {% if project.status == 'archived' %}selected{% endif %}>アーカイブ</option>
+        </select>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="preview-tile">
+      <div style="font-size:.78rem; color:#888; margin-bottom:.5rem;">プレビュー</div>
+      <div class="preview-card" id="previewCard">
+        <div class="preview-emoji" id="previewEmoji">{{ project.emoji if project else '📁' }}</div>
+        <div class="preview-name" id="previewName">{{ project.name if project else '（未入力）' }}</div>
+        <div class="preview-desc" id="previewDesc">{{ project.description if project else '（説明なし）' }}</div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">
+        {% if project %}💾 更新{% else %}＋ 作成{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const nameInp = document.getElementById('name');
+  const emojiInp = document.getElementById('emoji');
+  const descInp = document.getElementById('description');
+  const colorInp = document.getElementById('color');
+  const card = document.getElementById('previewCard');
+  const pName = document.getElementById('previewName');
+  const pEmoji = document.getElementById('previewEmoji');
+  const pDesc = document.getElementById('previewDesc');
+
+  function refresh() {
+    pName.textContent = nameInp.value || '（未入力）';
+    pEmoji.textContent = emojiInp.value || '📁';
+    pDesc.textContent = descInp.value || '（説明なし）';
+    card.style.borderTopColor = colorInp.value || '#16213e';
+  }
+  [nameInp, emojiInp, descInp, colorInp].forEach(el => el.addEventListener('input', refresh));
+  refresh();
+</script>
+{% endblock %}

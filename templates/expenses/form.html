@@ -56,9 +56,34 @@
     </div>
 
     <div class="form-group">
-      <label for="payee">支払先</label>
+      <label for="contact_id">注文先（Vendor）</label>
+      <select id="contact_id" name="contact_id">
+        <option value="">（未選択）</option>
+        {% for c in contacts %}
+          <option value="{{ c.id }}" {% if expense.get('contact_id') == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="payee">支払先（その他）</label>
       <input type="text" id="payee" name="payee"
              value="{{ expense.get('payee', '') }}" placeholder="例: Indomaret">
+    </div>
+
+    <div class="form-group">
+      <label for="job_id">関連案件（Job）</label>
+      <select id="job_id" name="job_id">
+        <option value="">（未選択）</option>
+        {% for j in jobs %}
+          <option value="{{ j.id }}" {% if expense.get('job_id') == j.id %}selected{% endif %}>
+            {{ j.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">※特定の修理案件などの原価として集計する場合に選択します</small>
     </div>
 
     <div class="form-group">
@@ -75,16 +100,23 @@
     </div>
 
     <div class="form-group">
-      <label for="receipt">レシート画像</label>
-      <input type="file" id="receipt" name="receipt" accept="image/*">
-      {% if expense.get('receipt_path') %}
+      <label for="receipt">レシート画像 / PDF (最大5枚)</label>
+      <input type="file" id="receipt" name="receipt" accept="image/*,application/pdf" multiple>
+      <small class="text-muted">※最大5枚までアップロード可能です。新しい選択で既存の添付は置き換わります。</small>
+      
+      {% set paths = expense.get('receipt_path') | from_json %}
+      {% if paths %}
         <div class="mt-1">
-          <p class="text-muted">現在のレシート：</p>
-          <a href="{{ url_for('web.serve_receipt', filename=expense.receipt_path) }}" target="_blank">
-            <img src="{{ url_for('web.serve_receipt', filename=expense.receipt_path) }}"
-                 alt="レシート" class="receipt-thumb" style="width:80px; height:80px;">
-          </a>
-          <p class="text-muted mt-1">新しいファイルを選択すると置き換わります。</p>
+          <p class="text-muted">現在の添付：</p>
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+            {% for p in paths %}
+              <a href="{{ url_for('web.serve_receipt', filename=p) }}" target="_blank">
+                 <img src="{{ url_for('web.serve_receipt', filename=p) }}"
+                      alt="添付" class="receipt-thumb" style="width:70px; height:70px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">
+              </a>
+            {% endfor %}
+          </div>
+          <p class="text-muted mt-1" style="font-size:.8rem;">新しいファイルを選択すると既存のものは置き換わります。</p>
         </div>
       {% endif %}
     </div>

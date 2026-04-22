@@ -1,4 +1,4 @@
-import sys # reload 2
+import sys
 import os
 from pathlib import Path
 
@@ -19,11 +19,6 @@ for m in list(sys.modules.keys()):
 from app import application as _flask_app  # noqa: E402
 
 def application(environ, start_response):
-    """Passengerが PassengerBaseURI=/keiri により PATH_INFO から /keiri を
-    剥がすため、Flask Blueprint(url_prefix='/keiri')と整合するよう PATH_INFO に
-    /keiri を復元する。SCRIPT_NAME は空にして url_for() の二重プレフィックスを回避。"""
-    path = environ.get("PATH_INFO", "") or ""
-    if not path.startswith("/keiri"):
-        environ["PATH_INFO"] = "/keiri" + path
-    environ["SCRIPT_NAME"] = ""
+    """/keiri プレフィックスをWSGIに伝えてurl_for()が正しいURLを生成するようにする。"""
+    environ["SCRIPT_NAME"] = "/keiri"
     return _flask_app(environ, start_response)

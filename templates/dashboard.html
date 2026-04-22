@@ -18,6 +18,7 @@
 
 {% block content %}
 
+{% if not read_only and 'receipt_ocr' in allowed_pages %}
 <!-- レシート自動記帳バナー -->
 <a href="{{ url_for('web.receipt_ocr') }}"
    style="display:flex; align-items:center; gap:1rem;
@@ -35,12 +36,15 @@
   </div>
   <span style="margin-left:auto; font-size:1.25rem; opacity:.7;">›</span>
 </a>
+{% endif %}
 
 <div class="page-header">
   <h1>{{ T.dash_title }}</h1>
   <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
+    {% if not read_only %}
     <a href="{{ url_for('web.expenses_new') }}" class="btn btn-danger">{{ T.btn_add_expense }}</a>
     <a href="{{ url_for('web.revenue_new') }}" class="btn btn-success">{{ T.btn_add_revenue }}</a>
+    {% endif %}
     <a href="{{ url_for('web.financial_report', year=year) }}" class="btn btn-edit">{{ T.btn_financial }}</a>
     <a href="{{ url_for('web.export_expenses_csv', year=year) }}" class="btn btn-edit">{{ T.btn_csv }}</a>
   </div>
@@ -60,7 +64,7 @@
 
   <!-- 月ナビ -->
   <div style="display:flex; align-items:center; gap:.4rem;">
-    <a href="{{ url_for('web.dashboard', year=prev_year, month=prev_month) }}"
+    <a href="{{ url_for('web.job_dashboard', year=prev_year, month=prev_month) }}"
        class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem;">{{ T.month_prev }}</a>
 
     <span style="font-size:1rem; font-weight:700; color:#16213e; min-width:7rem; text-align:center;">
@@ -69,14 +73,14 @@
     </span>
 
     {% if not is_current_month %}
-    <a href="{{ url_for('web.dashboard', year=next_year, month=next_month) }}"
+    <a href="{{ url_for('web.job_dashboard', year=next_year, month=next_month) }}"
        class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem;">{{ T.month_next }}</a>
     {% else %}
     <span class="btn btn-edit" style="padding:.35rem .75rem; font-size:.85rem; opacity:.35; cursor:default;">{{ T.month_next }}</span>
     {% endif %}
 
     {% if not is_current_month %}
-    <a href="{{ url_for('web.dashboard') }}"
+    <a href="{{ url_for('web.job_dashboard') }}"
        style="font-size:.8rem; color:#3b82f6; text-decoration:none; margin-left:.25rem;">↩ {{ T.month_today }}</a>
     {% endif %}
   </div>
@@ -186,7 +190,9 @@
   <div class="card" style="padding:1rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
       <div class="card-title" style="margin:0;">{{ T.chart_budget }}</div>
+      {% if not read_only %}
       <a href="{{ url_for('web.budget', year=year, month=month) }}" class="btn btn-edit btn-sm">{{ T.chart_budget_set }}</a>
+      {% endif %}
     </div>
     {% set has_budget = budget_progress | selectattr('budget', 'gt', 0) | list %}
     {% if has_budget %}
@@ -200,7 +206,7 @@
       </div>
       {% endfor %}
     {% else %}
-    <p class="text-muted" style="font-size:.85rem;">{{ T.budget_not_set }} <a href="{{ url_for('web.budget', year=year, month=month) }}">{{ T.budget_set_link }}</a></p>
+    <p class="text-muted" style="font-size:.85rem;">{{ T.budget_not_set }} {% if not read_only %}<a href="{{ url_for('web.budget', year=year, month=month) }}">{{ T.budget_set_link }}</a>{% endif %}</p>
     {% endif %}
   </div>
 </div>
@@ -288,10 +294,12 @@
             <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
             <td class="text-muted">{{ e.category_name or '—' }}</td>
             <td class="actions">
+              {% if not read_only %}
               <form method="post" action="{{ url_for('web.expenses_settle', expense_id=e.id) }}"
                     onsubmit="return confirm('「{{ e.name }}」を精算済み（TRANSFER）に変更しますか？')">
                 <button type="submit" class="btn btn-success btn-sm">{{ T.btn_settle }}</button>
               </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -326,7 +334,7 @@
             <td class="text-muted">{{ e.payee or '—' }}</td>
             <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
             <td>{% if e.payment_method == '立替え' %}<span style="color:#c1121f;font-weight:600;">立替え</span>{% else %}{{ e.payment_method or '—' }}{% endif %}</td>
-            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a></td>
+            <td>{% if not read_only %}<a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -365,7 +373,7 @@
             <td class="text-muted">{{ e.payee or '—' }}</td>
             <td class="amount negative">{{ fmt_idr(e.amount) }}</td>
             <td class="text-muted">{{ e.category_name or '—' }}</td>
-            <td><a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a></td>
+            <td>{% if not read_only %}<a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit btn-sm">{{ T.btn_edit }}</a>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

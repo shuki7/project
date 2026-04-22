@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}{{ T.contact_title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>👥 {{ T.contact_title }}</h1>
+    <button onclick="document.getElementById('contactModal').style.display='flex'" class="btn btn-primary">＋ {{ T.contact_add }}</button>
+</div>
+
+<div class="card">
+    {% if not contacts %}
+    <p class="text-muted" style="text-align: center; padding: 2rem;">登録された連絡先はありません</p>
+    {% else %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>種別</th>
+                    <th>{{ T.th_name }}</th>
+                    <th>担当者</th>
+                    <th>連絡先</th>
+                    <th>住所</th>
+                    <th>口座・メモ</th>
+                    <th style="width: 100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contacts %}
+                <tr>
+                    <td>
+                        <span class="btn-sm" style="font-size: 0.75rem; border-radius: 4px; 
+                            {% if c.type == 'vendor' %}background: #e9ecef; color: #444;{% else %}background: #d8f3dc; color: #1b4332;{% endif %}">
+                            {{ 'ベンダー' if c.type == 'vendor' else '顧客' }}
+                        </span>
+                    </td>
+                    <td style="font-weight: 600;">{{ c.name }}</td>
+                    <td style="font-size: 0.85rem;">{{ c.contact_person or '' }}</td>
+                    <td style="font-size: 0.85rem;">
+                        {% if c.phone %}📞 {{ c.phone }}<br>{% endif %}
+                        {% if c.email %}📧 {{ c.email }}{% endif %}
+                    </td>
+                    <td style="font-size: 0.8rem; color: #666;" title="{{ c.address or '' }}">
+                        {{ (c.address|truncate(20)) if c.address else '' }}
+                    </td>
+                    <td style="font-size: 0.8rem;">
+                        {% if c.bank_info %}<div style="color: #2d6a4f;">🏦 {{ c.bank_info }}</div>{% endif %}
+                        <div class="text-muted">{{ c.memo or '' }}</div>
+                    </td>
+                    <td class="actions">
+                        <div style="display: flex; gap: 0.3rem;">
+                            <button onclick='editContact({{ c|tojson }})' class="btn btn-sm btn-edit">編集</button>
+                            <form action="{{ url_for('web.contacts_delete', id=c.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('削除してよろしいですか？')">
+                                <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 登録・編集モーダル -->
+<div id="contactModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding: 1rem;">
+    <div class="card" style="width:100%; max-width:500px; margin:0;">
+        <h2 id="modalTitle" class="card-title">{{ T.contact_add }}</h2>
+        <form method="POST">
+            <input type="hidden" id="contactId" name="id">
+            <div class="form-group">
+                <label>種別</label>
+                <select name="type" id="contactType" required>
+                    <option value="vendor">注文先(Vendor)</option>
+                    <option value="customer">得意先(Customer)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{{ T.th_name }}</label>
+                <input type="text" name="name" id="contactName" required>
+            </div>
+            <div class="grid-3" style="grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                <div class="form-group">
+                    <label>担当者</label>
+                    <input type="text" name="contact_person" id="contactPerson">
+                </div>
+                <div class="form-group">
+                    <label>電話番号</label>
+                    <input type="text" name="phone" id="contactPhone">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>メールアドレス</label>
+                <input type="text" name="email" id="contactEmail">
+            </div>
+            <div class="form-group">
+                <label>住所</label>
+                <input type="text" name="address" id="contactAddress">
+            </div>
+            <div class="form-group">
+                <label>銀行口座情報</label>
+                <textarea name="bank_info" id="contactBank" placeholder="銀行名、支店、SWIFT、口座番号、名義など" style="min-height: 60px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>メモ</label>
+                <textarea name="memo" id="contactMemo" style="min-height: 60px;"></textarea>
+            </div>
+            
+            <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">保存</button>
+                <button type="button" onclick="closeContactModal()" class="btn btn-edit" style="flex:1;">キャンセル</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function editContact(c) {
+    document.getElementById('modalTitle').innerText = '連絡先を編集';
+    document.getElementById('contactId').value = c.id;
+    document.getElementById('contactType').value = c.type;
+    document.getElementById('contactName').value = c.name;
+    document.getElementById('contactPerson').value = c.contact_person || '';
+    document.getElementById('contactPhone').value = c.phone || '';
+    document.getElementById('contactEmail').value = c.email || '';
+    document.getElementById('contactAddress').value = c.address || '';
+    document.getElementById('contactBank').value = c.bank_info || '';
+    document.getElementById('contactMemo').value = c.memo || '';
+    document.getElementById('contactModal').style.display = 'flex';
+}
+
+function closeContactModal() {
+    document.getElementById('contactModal').style.display = 'none';
+    document.getElementById('contactId').value = '';
+    document.getElementById('modalTitle').innerText = '{{ T.contact_add }}';
+}
+
+// モーダルの外側をクリックしたら閉じる
+window.onclick = function(event) {
+    let modal = document.getElementById('contactModal');
+    if (event.target == modal) closeContactModal();
+}
+</script>
+{% endblock %}
+
+{% endblock %}

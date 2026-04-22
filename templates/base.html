@@ -24,6 +24,7 @@
       gap: 0;
       height: 56px;
       box-shadow: 0 2px 8px rgba(0,0,0,.3);
+      position: relative;
     }
     .nav-brand {
       font-size: 1rem;
@@ -38,7 +39,11 @@
       list-style: none;
       gap: 0;
       height: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
+    .nav-links::-webkit-scrollbar { display: none; }
     .nav-links a {
       display: flex;
       align-items: center;
@@ -48,6 +53,7 @@
       text-decoration: none;
       font-size: 0.92rem;
       font-weight: 500;
+      white-space: nowrap;
       transition: background .15s, color .15s;
       border-bottom: 3px solid transparent;
     }
@@ -146,8 +152,12 @@
 
     /* ── グリッド ── */
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 700px) {
-      .grid-3 { grid-template-columns: 1fr; }
+      .grid-3, .grid-4 { grid-template-columns: 1fr; }
     }
 
     /* ── テーブル ── */
@@ -286,20 +296,117 @@
     .mt-2 { margin-top: 1rem; }
     .positive { color: #2d6a4f; }
     .negative { color: #c1121f; }
+
+    /* ── 閲覧専用バナー ── */
+    .readonly-banner {
+      background: #fff3cd;
+      color: #856404;
+      text-align: center;
+      padding: .5rem;
+      font-size: .85rem;
+      font-weight: 600;
+      border-bottom: 1px solid #ffeeba;
+    }
+
+    /* ── ハンバーガーメニュー（モバイル） ── */
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0 .6rem;
+      margin-right: .4rem;
+      line-height: 1;
+    }
+    .nav-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 998;
+    }
+    .nav-overlay.open { display: block; }
+
+    @media (max-width: 900px) {
+      nav { padding: 0 .8rem; }
+      .nav-toggle { display: inline-flex; align-items: center; }
+      .nav-brand { font-size: .9rem; margin-right: auto; }
+      .nav-search { display: none; }
+      .nav-links {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        flex-direction: column;
+        background: #16213e;
+        padding: 4rem 0 1rem;
+        overflow-y: auto;
+        overflow-x: hidden;
+        transition: left .25s ease;
+        z-index: 999;
+        box-shadow: 2px 0 12px rgba(0,0,0,.4);
+      }
+      .nav-links.open { left: 0; }
+      .nav-links a {
+        height: auto;
+        padding: .9rem 1.4rem;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        font-size: 1rem;
+        border-left: 3px solid transparent;
+      }
+      .nav-links a.active {
+        border-bottom-color: rgba(255,255,255,.06);
+        border-left-color: #e2c97e;
+        background: rgba(226,201,126,.08);
+      }
+      /* モバイルではセクション区切りの縦線 li を横線に */
+      .nav-links li[style*="border-left"] {
+        border-left: none !important;
+        border-top: 1px solid rgba(255,255,255,.1) !important;
+        margin: .3rem 0 !important;
+      }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   <nav>
-    <a class="nav-brand" href="{{ url_for('web.dashboard') }}">{{ company_name }}</a>
-    <ul class="nav-links">
-      <li><a href="{{ url_for('web.dashboard') }}"       {% if page == 'dashboard'   %}class="active"{% endif %}>{{ T.nav_dashboard }}</a></li>
-      <li><a href="{{ url_for('web.expenses_list') }}"   {% if page == 'expenses'    %}class="active"{% endif %}>{{ T.nav_expenses }}</a></li>
-      <li><a href="{{ url_for('web.revenue_list') }}"    {% if page == 'revenue'     %}class="active"{% endif %}>{{ T.nav_revenue }}</a></li>
-      <li><a href="{{ url_for('web.categories_list') }}" {% if page == 'categories'  %}class="active"{% endif %}>{{ T.nav_categories }}</a></li>
-      <li><a href="{{ url_for('web.receipt_ocr') }}"     {% if page == 'receipt_ocr' %}class="active"{% endif %}>{{ T.nav_receipt }}</a></li>
-      <li><a href="{{ url_for('web.budget') }}"          {% if page == 'budget'      %}class="active"{% endif %}>{{ T.nav_budget }}</a></li>
-      <li><a href="{{ url_for('web.financial_report') }}"{% if page == 'financial'   %}class="active"{% endif %}>{{ T.nav_financial }}</a></li>
+    <button class="nav-toggle" id="navToggle" aria-label="メニュー" aria-expanded="false">☰</button>
+    <a class="nav-brand" href="{{ url_for('web.launcher') }}">
+      {% if project_emoji %}<span style="margin-right:0.4rem;">{{ project_emoji }}</span>{% endif %}
+      {{ company_name }}
+    </a>
+    {% if not read_only %}
+    <div style="margin-right: 1.5rem; display: flex; align-items: center;">
+      <a href="{{ url_for('web.launcher') }}" class="btn btn-sm btn-edit" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+        切替
+      </a>
+    </div>
+    {% endif %}
+    <ul class="nav-links" id="navLinks">
+      <!-- 経理セクション -->
+      <li><a href="{{ url_for('web.job_dashboard') }}"       {% if page == 'dashboard'   %}class="active"{% endif %}>🏠 {{ T.nav_dashboard }}</a></li>
+      <li><a href="{{ url_for('web.expenses_list') }}"   {% if page == 'expenses'    %}class="active"{% endif %}>💸 {{ T.nav_expenses }}</a></li>
+      <li><a href="{{ url_for('web.revenue_list') }}"    {% if page == 'revenue'     %}class="active"{% endif %}>📈 {{ T.nav_revenue }}</a></li>
+      
+      {% if not read_only %}
+      <li style="border-left: 1px solid rgba(255,255,255,0.1); margin: 0 0.5rem;"></li>
+      
+      <!-- 管理セクション -->
+      <li><a href="{{ url_for('web.tasks') }}"          {% if page == 'tasks'       %}class="active"{% endif %}>✅ {{ T.nav_tasks }}</a></li>
+      <li><a href="{{ url_for('web.jobs') }}"           {% if page == 'jobs'        %}class="active"{% endif %}>💎 {{ T.nav_jobs }}</a></li>
+      <li><a href="{{ url_for('web.contacts') }}"       {% if page == 'contacts'    %}class="active"{% endif %}>👥 {{ T.nav_contacts }}</a></li>
+      <li><a href="{{ url_for('web.project_info') }}"   {% if page == 'info'        %}class="active"{% endif %}>📄 {{ T.nav_info }}</a></li>
+      {% endif %}
+
+      {% if not read_only or 'categories' in allowed_pages %}
+      <li style="border-left: 1px solid rgba(255,255,255,0.1); margin: 0 0.5rem;"></li>
+      <li><a href="{{ url_for('web.budget') }}"          {% if page == 'budget'      %}class="active"{% endif %}>🎯 {{ T.nav_budget }}</a></li>
+      <li><a href="{{ url_for('web.financial_report') }}"{% if page == 'financial'   %}class="active"{% endif %}>📊 {{ T.nav_financial }}</a></li>
+      {% endif %}
     </ul>
     <form class="nav-search" method="get" action="{{ url_for('web.search') }}">
       <input type="search" name="q" placeholder="{{ T.nav_search_ph }}" value="{{ request.args.get('q', '') }}">
@@ -318,8 +425,39 @@
         🇮🇩
       </a>
     </div>
+    {% if not read_only %}
     <a href="{{ url_for('web.logout') }}" style="color:#c5cae9; font-size:.82rem; padding:0 .75rem; text-decoration:none; white-space:nowrap; opacity:.7;">{{ T.nav_logout }}</a>
+    {% endif %}
   </nav>
+  <div class="nav-overlay" id="navOverlay"></div>
+  <script>
+    (function() {
+      var btn   = document.getElementById('navToggle');
+      var links = document.getElementById('navLinks');
+      var ov    = document.getElementById('navOverlay');
+      if (!btn || !links) return;
+      function close() {
+        links.classList.remove('open');
+        ov.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+      function open() {
+        links.classList.add('open');
+        ov.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+      btn.addEventListener('click', function() {
+        links.classList.contains('open') ? close() : open();
+      });
+      ov.addEventListener('click', close);
+    })();
+  </script>
+
+  {% if read_only %}
+  <div class="readonly-banner">
+    ⚠️ 閲覧専用モードです。データの変更はできません。
+  </div>
+  {% endif %}
 
   <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -334,5 +472,6 @@
 
     {% block content %}{% endblock %}
   </div>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

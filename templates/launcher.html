@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}プロジェクト選択 — SSP経理{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background: radial-gradient(circle at top left, #1e293b, #0f172a);
+        color: #fff;
+    }
+    nav { display: none; } /* ランチャーではナビを隠す */
+    .container { max-width: 900px; padding-top: 10vh; }
+    
+    .launcher-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    .launcher-header h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(to right, #e2c97e, #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    .launcher-header p {
+        color: rgba(255,255,255,0.6);
+        font-size: 1.1rem;
+    }
+
+    .project-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 2rem;
+    }
+
+    .project-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .project-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 4px;
+        background: var(--accent-color, #e2c97e);
+        opacity: 0.5;
+        transition: opacity 0.3s;
+    }
+    .project-card:hover {
+        transform: translateY(-8px);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .project-card:hover::before { opacity: 1; }
+
+    .project-emoji {
+        font-size: 3.5rem;
+        margin-bottom: 1.5rem;
+        filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));
+    }
+    .project-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    .project-status {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.8rem;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.7);
+    }
+
+    .add-project-card {
+        border-style: dashed;
+        background: transparent;
+        cursor: pointer;
+    }
+    .add-project-card:hover {
+        background: rgba(255,255,255,0.02);
+    }
+    .add-icon {
+        font-size: 2.5rem;
+        color: rgba(255,255,255,0.3);
+        margin-bottom: 1rem;
+    }
+
+    /* モーダル */
+    .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+        background: #1e293b;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        width: 100%;
+        max-width: 450px;
+        padding: 2rem;
+    }
+    .modal-content h2 { margin-bottom: 1.5rem; color: #e2c97e; }
+    .modal-content input {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #fff;
+        margin-bottom: 1rem;
+    }
+    .modal-content label { color: rgba(255,255,255,0.7); }
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    /* 共有リンク管理用追加スタイル */
+    .share-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        z-index: 10;
+        text-decoration: none;
+    }
+    .share-btn:hover {
+        background: #3b82f6;
+        transform: scale(1.1);
+    }
+    .share-list {
+        margin-top: 1.5rem;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1rem;
+    }
+    .share-item {
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .share-info { flex: 1; }
+    .share-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .share-url { font-family: monospace; font-size: 0.75rem; color: rgba(255,255,255,0.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+    .share-actions { display: flex; gap: 0.5rem; }
+    
+    .check-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .check-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .check-item input { margin: 0; width: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="launcher-header">
+    <h1>SSP PROJECT</h1>
+    <p>管理するワークスペースを選択してください</p>
+</div>
+
+<div class="project-grid">
+    {% for p in projects %}
+    <div style="position: relative;">
+        <!-- 共有ボタン -->
+        <button type="button" class="share-btn" title="共有管理" onclick="openShareModal('{{ p.id }}', '{{ p.name }}', {{ (p.shares or []) | tojson }})">
+            🔗
+        </button>
+        <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
+            <div class="project-emoji">{{ p.emoji }}</div>
+            <div class="project-name">{{ p.name }}</div>
+            <div class="project-status">Active</div>
+        </a>
+    </div>
+    {% endfor %}
+
+    <!-- プロジェクト追加カード -->
+    <div class="project-card add-project-card" onclick="openModal()">
+        <div class="add-icon">+</div>
+        <div class="project-name" style="color: rgba(255,255,255,0.4)">新しいプロジェクト</div>
+    </div>
+</div>
+
+    <!-- プロジェクト追加モーダル -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <h2>新規プロジェクト作成</h2>
+            <form action="{{ url_for('web.add_project') }}" method="POST">
+                <div class="form-group">
+                    <label>プロジェクト名</label>
+                    <input type="text" name="name" placeholder="例: SSP Global Venture" required>
+                </div>
+                <div class="form-group">
+                    <label>絵文字 / アイコン</label>
+                    <input type="text" name="emoji" placeholder="例: 🌎" required>
+                </div>
+                <div class="form-group">
+                    <label>テーマカラー</label>
+                    <input type="color" name="color" value="#3b82f6" style="height: 40px; padding: 2px;">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-edit" onclick="closeModal()">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">作成する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 共有管理モーダル -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <h2 id="shareModalTitle">共有管理</h2>
+            
+            <!-- 既存リンク一覧 -->
+            <div id="existingShares" class="share-list">
+                <!-- JSで動的に追加 -->
+            </div>
+
+            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
+
+            <!-- 新規追加フォーム -->
+            <form action="{{ url_for('web.projects_share_add') }}" method="POST">
+                <input type="hidden" name="project_id" id="shareProjectId">
+                <h3>新規共有リンク発行</h3>
+                <div class="form-group" style="margin-top:1rem;">
+                    <label>パートナー名</label>
+                    <input type="text" name="partner_name" placeholder="例: A社 担当者様" required>
+                </div>
+                <div class="form-group">
+                    <label>閲覧を許可するメニュー</label>
+                    <div class="check-grid">
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="dashboard" checked disabled> ダッシュボード</label>
+                        <input type="hidden" name="allowed_pages" value="dashboard"> <!-- 常に送信 -->
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="expenses" checked> 経費履歴</label>
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="revenue" checked> 収入履歴</label>
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="categories" checked> 勘定科目</label>
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="receipt_ocr" checked> レシートOCR</label>
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="budget" checked> 予算管理</label>
+                        <label class="check-item"><input type="checkbox" name="allowed_pages" value="financial" checked> 決算書</label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-edit" onclick="closeShareModal()">戻る</button>
+                    <button type="submit" class="btn btn-primary">リンクを作成</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal() {
+    document.getElementById('projectModal').classList.add('active');
+}
+function closeModal() {
+    document.getElementById('projectModal').classList.remove('active');
+}
+
+function openShareModal(pid, name, shares) {
+    document.getElementById('shareModalTitle').textContent = `「${name}」の共有管理`;
+    document.getElementById('shareProjectId').value = pid;
+    
+    const list = document.getElementById('existingShares');
+    list.innerHTML = shares.length ? '' : '<p class="text-muted" style="text-align:center;">有効な共有リンクはありません</p>';
+    
+    shares.forEach(s => {
+        const shareUrl = `${window.location.origin}{{ url_for('web.shared_access', token='TOKEN') }}`.replace('TOKEN', s.id);
+        const item = document.createElement('div');
+        item.className = 'share-item';
+        item.innerHTML = `
+            <div class="share-info">
+                <div class="share-name">${s.name}</div>
+                <div class="share-url">${shareUrl}</div>
+            </div>
+            <div class="share-actions">
+                <button class="btn btn-sm btn-edit" onclick="copyToClipboard('${shareUrl}')" title="リンクをコピー">📋</button>
+                <form action="{{ url_for('web.projects_share_delete') }}" method="POST" style="margin:0;" onsubmit="return confirm('共有リンクを削除しますか？')">
+                    <input type="hidden" name="project_id" value="${pid}">
+                    <input type="hidden" name="share_id" value="${s.id}">
+                    <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                </form>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+    
+    document.getElementById('shareModal').classList.add('active');
+}
+
+function closeShareModal() {
+    document.getElementById('shareModal').classList.remove('active');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('リンクをコピーしました！');
+    });
+}
+
+// 画面外クリックで閉じる
+window.onclick = function(event) {
+    let pModal = document.getElementById('projectModal');
+    let sModal = document.getElementById('shareModal');
+    if (event.target == pModal) closeModal();
+    if (event.target == sModal) closeShareModal();
+}
+</script>
+{% endblock %}

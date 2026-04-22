@@ -1,0 +1,206 @@
+{% extends "project/_base.html" %}
+{% block title %}{% if item %}{{ meta.label }} 編集{% else %}{{ meta.label }} 追加{% endif %} — {{ project.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-card { max-width: 720px; margin: 0 auto; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .project-mini {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: .8rem 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    border-left: 5px solid {{ project.color or '#16213e' }};
+  }
+  .project-mini .emoji { font-size: 1.6rem; }
+  .project-mini .name { font-weight: 700; color: #16213e; font-size: 1.05rem; }
+
+  .cat-tag {
+    display: inline-block;
+    padding: .2rem .6rem;
+    background: #eef1f6;
+    color: #16213e;
+    border-radius: 12px;
+    font-size: .78rem;
+    font-weight: 700;
+    margin-bottom: .8rem;
+  }
+
+  .att-section {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #d8dde6;
+  }
+  .att-section h3 { font-size: .92rem; color: #555; margin-bottom: .55rem; }
+  .att-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .35rem .5rem;
+    background: #fafbfc;
+    border-radius: 5px;
+    margin-bottom: .3rem;
+    font-size: .82rem;
+  }
+  .att-row a { color: #0d3b8c; text-decoration: none; }
+  .att-row .del-att {
+    background: none;
+    border: none;
+    color: #c1121f;
+    font-size: .75rem;
+    cursor: pointer;
+  }
+  .upload-inline {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: .55rem;
+  }
+  .upload-inline input[type="file"] {
+    padding: .35rem;
+    border: 1.5px solid #dde1ea;
+    border-radius: 5px;
+    font-size: .85rem;
+    flex: 1;
+    min-width: 200px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-mini">
+  <div class="emoji">{{ project.emoji or '📁' }}</div>
+  <div>
+    <div class="name">{{ project.name }}</div>
+    <div style="font-size:.78rem; color:#888;">
+      <a href="{{ url_for('project.info', project_id=project.id) }}" style="color:#888;">← プロジェクト情報へ戻る</a>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1>{% if item %}✏️ 編集{% else %}＋ 追加{% endif %}</h1>
+</div>
+
+<div class="card form-card">
+  <span class="cat-tag">{{ meta.label }}</span>
+
+  <form method="post">
+    {% if not item %}
+      <input type="hidden" name="category" value="{{ meta.key }}">
+    {% endif %}
+
+    <div class="form-group">
+      <label for="label">ラベル</label>
+      <input type="text" id="label" name="label"
+             value="{{ item.label if item else '' }}"
+             placeholder="例: メイン銀行 / リビングWiFi / 本社住所">
+    </div>
+
+    {# 2列グリッドにフィールドを並べる（password は単独行） #}
+    <div class="row">
+      {% for fkey in meta.fields %}
+        {% if fkey == 'notes' %}
+          {# notes は最後にフル幅で表示するためここではスキップ #}
+        {% elif fkey == 'password' %}
+          {# password はフル幅で別表示 #}
+        {% else %}
+          <div class="form-group">
+            <label for="field_{{ fkey }}">{{ field_labels.get(fkey, fkey) }}</label>
+            {% if fkey in ['start_date', 'end_date'] %}
+              <input type="date" id="field_{{ fkey }}" name="field_{{ fkey }}"
+                     value="{{ (item.fields.get(fkey) if item else '') or '' }}">
+            {% elif fkey in ['amount'] %}
+              <input type="text" id="field_{{ fkey }}" name="field_{{ fkey }}"
+                     value="{{ (item.fields.get(fkey) if item else '') or '' }}"
+                     placeholder="例: Rp 500,000 / 月">
+            {% else %}
+              <input type="text" id="field_{{ fkey }}" name="field_{{ fkey }}"
+                     value="{{ (item.fields.get(fkey) if item else '') or '' }}">
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if 'password' in meta.fields %}
+      <div class="form-group">
+        <label for="field_password">{{ field_labels.get('password', 'password') }}</label>
+        <input type="text" id="field_password" name="field_password"
+               value="{{ (item.fields.get('password') if item else '') or '' }}"
+               style="font-family: monospace;">
+      </div>
+    {% endif %}
+
+    {% if 'notes' in meta.fields %}
+      <div class="form-group">
+        <label for="field_notes">{{ field_labels.get('notes', 'メモ') }}</label>
+        <textarea id="field_notes" name="field_notes" rows="3">{{ (item.fields.get('notes') if item else '') or '' }}</textarea>
+      </div>
+    {% endif %}
+
+    <div class="form-group" style="max-width:200px;">
+      <label for="sort_order">並び順</label>
+      <input type="number" id="sort_order" name="sort_order"
+             value="{{ item.sort_order if item and item.sort_order is not none else 0 }}">
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('project.info', project_id=project.id) }}" class="btn btn-sm btn-edit">← キャンセル</a>
+      <button type="submit" class="btn btn-success">
+        {% if item %}💾 更新{% else %}＋ 作成{% endif %}
+      </button>
+    </div>
+  </form>
+
+  {% if item %}
+  <div class="att-section">
+    <h3>📎 この項目に紐づく添付ファイル</h3>
+    {% if item_attachments %}
+      {% for a in item_attachments %}
+        <div class="att-row">
+          <span>
+            {% if a.drive_url %}
+              <a href="{{ a.drive_url }}" target="_blank">{{ a.filename }}</a>
+            {% else %}{{ a.filename }}{% endif %}
+            {% if a.notes %}<span style="color:#888;">— {{ a.notes }}</span>{% endif %}
+          </span>
+          <form method="post" action="{{ url_for('project.info_attachment_delete', project_id=project.id, att_id=a.id) }}">
+            <input type="hidden" name="info_item_id" value="{{ item.id }}">
+            <button type="submit" class="del-att" onclick="return confirm('削除しますか？');">削除</button>
+          </form>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:#aaa; font-size:.82rem; padding:.4rem 0;">— 添付なし —</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('project.info_attachment_upload', project_id=project.id) }}"
+          enctype="multipart/form-data">
+      <input type="hidden" name="info_item_id" value="{{ item.id }}">
+      <input type="hidden" name="category" value="{{ 'contract' if meta.key == 'contract' else 'document' }}">
+      <input type="hidden" name="redirect_to" value="edit">
+      <div class="upload-inline">
+        <input type="file" name="file" required>
+        <input type="text" name="notes" placeholder="メモ（任意）" style="flex:1; min-width:150px;">
+        <button type="submit" class="btn btn-primary btn-sm">📤 Drive にアップロード</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

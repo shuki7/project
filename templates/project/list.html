@@ -1,0 +1,133 @@
+{% extends "project/_base.html" %}
+{% block title %}プロジェクト一覧 — プロジェクト管理{% endblock %}
+
+{% block extra_head %}
+<style>
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .project-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.09);
+    padding: 1.5rem;
+    border-top: 5px solid #16213e;
+    transition: transform .12s, box-shadow .12s;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+  }
+  .project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.13);
+  }
+  .project-emoji { font-size: 2rem; margin-bottom: .5rem; }
+  .project-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #16213e;
+    margin-bottom: .35rem;
+  }
+  .project-desc {
+    font-size: .85rem;
+    color: #666;
+    line-height: 1.5;
+    flex: 1;
+  }
+  .project-info {
+    margin-top: .6rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .25rem .6rem;
+    font-size: .8rem;
+    color: #444;
+    line-height: 1.45;
+  }
+  .project-info .lbl { color: #999; white-space: nowrap; }
+  .project-info .val { color: #1a1a2e; word-break: break-word; }
+  .project-meta {
+    margin-top: .8rem;
+    font-size: .75rem;
+    color: #999;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .badge-archived {
+    background: #888;
+    color: #fff;
+    padding: .15rem .5rem;
+    border-radius: 10px;
+    font-size: .7rem;
+    font-weight: 700;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: #888;
+  }
+  .empty-state h2 { font-size: 1.2rem; margin-bottom: .5rem; }
+  .filter-bar {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📁 プロジェクト一覧</h1>
+  <div style="display:flex; gap:.5rem;">
+    {% if show_archived %}
+      <a href="{{ url_for('project.list_projects') }}" class="btn btn-sm btn-edit">アクティブのみ表示</a>
+    {% else %}
+      <a href="{{ url_for('project.list_projects', archived=1) }}" class="btn btn-sm btn-edit">アーカイブ含む</a>
+    {% endif %}
+    <a href="{{ url_for('project.new_project') }}" class="btn btn-success">＋ 新しいプロジェクト</a>
+  </div>
+</div>
+
+{% if projects %}
+  <div class="project-grid">
+    {% for p in projects %}
+      <a href="{{ url_for('project.detail', project_id=p.id) }}" class="project-card"
+         style="border-top-color: {{ p.color or '#16213e' }};">
+        <div class="project-emoji">{{ p.emoji or '📁' }}</div>
+        <div class="project-name">{{ p.name }}</div>
+        <div class="project-desc">{{ p.description or '（説明なし）' }}</div>
+        {% if p.start_date or p.client_name or p.manager_name %}
+        <div class="project-info">
+          {% if p.start_date %}
+            <span class="lbl">📅 開始</span><span class="val">{{ p.start_date }}</span>
+          {% endif %}
+          {% if p.client_name %}
+            <span class="lbl">🤝 依頼者</span><span class="val">{{ p.client_name }}</span>
+          {% endif %}
+          {% if p.manager_name %}
+            <span class="lbl">👤 担当</span><span class="val">{{ p.manager_name }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="project-meta">
+          <span>作成: {{ p.created_at[:10] if p.created_at else '' }}</span>
+          {% if p.status == 'archived' %}
+            <span class="badge-archived">アーカイブ</span>
+          {% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>まだプロジェクトがありません</h2>
+    <p style="margin-bottom: 1.5rem;">新しいプロジェクトを作成して管理を開始しましょう。</p>
+    <a href="{{ url_for('project.new_project') }}" class="btn btn-success">＋ 最初のプロジェクトを作成</a>
+  </div>
+{% endif %}
+{% endblock %}

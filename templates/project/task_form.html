@@ -1,0 +1,134 @@
+{% extends "project/_base.html" %}
+{% block title %}{% if task %}タスク編集{% else %}新規タスク{% endif %} — {{ project.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-card { max-width: 640px; margin: 0 auto; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .project-mini {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: .8rem 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    border-left: 5px solid {{ project.color or '#16213e' }};
+  }
+  .project-mini .emoji { font-size: 1.6rem; }
+  .project-mini .name { font-weight: 700; color: #16213e; font-size: 1.05rem; }
+  .check-archive {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .85rem;
+    color: #555;
+  }
+  .check-archive input { width: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-mini">
+  <div class="emoji">{{ project.emoji or '📁' }}</div>
+  <div>
+    <div class="name">{{ project.name }}</div>
+    <div style="font-size:.78rem; color:#888;">
+      <a href="{{ url_for('project.tasks_list', project_id=project.id) }}" style="color:#888;">← タスク一覧へ戻る</a>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1>{% if task %}✏️ タスク編集{% else %}＋ 新規タスク{% endif %}</h1>
+</div>
+
+<div class="card form-card">
+  <form method="post">
+    <div class="form-group">
+      <label for="title">タイトル <span style="color:#c1121f;">*</span></label>
+      <input type="text" id="title" name="title" required
+             value="{{ task.title if task else '' }}"
+             placeholder="例: 求人広告の原稿作成">
+    </div>
+
+    <div class="form-group">
+      <label for="description">詳細</label>
+      <textarea id="description" name="description" rows="4"
+                placeholder="メモや手順">{{ task.description if task else '' }}</textarea>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="status">ステータス</label>
+        <select id="status" name="status">
+          {% for k, l, c in statuses %}
+            <option value="{{ k }}"
+              {% if task and task.status == k %}selected
+              {% elif not task and k == 'pending' %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="priority">優先度</label>
+        <select id="priority" name="priority">
+          {% for k, l, c in priorities %}
+            <option value="{{ k }}"
+              {% if task and task.priority == k %}selected
+              {% elif not task and k == 'middle' %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="due_date">期限</label>
+        <input type="date" id="due_date" name="due_date"
+               value="{{ task.due_date if task and task.due_date else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="assignee">担当者</label>
+        <input type="text" id="assignee" name="assignee"
+               value="{{ task.assignee if task and task.assignee else '' }}"
+               placeholder="例: Shuki">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="sort_order">並び順</label>
+        <input type="number" id="sort_order" name="sort_order"
+               value="{{ task.sort_order if task and task.sort_order is not none else 0 }}">
+      </div>
+      {% if task %}
+      <div class="form-group">
+        <label>　</label>
+        <label class="check-archive">
+          <input type="checkbox" name="is_archived" value="1"
+                 {% if task.is_archived %}checked{% endif %}>
+          アーカイブする（一覧から非表示）
+        </label>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('project.tasks_list', project_id=project.id) }}" class="btn btn-sm btn-edit">← キャンセル</a>
+      <button type="submit" class="btn btn-success">
+        {% if task %}💾 更新{% else %}＋ 作成{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

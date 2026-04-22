@@ -17,7 +17,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import GDRIVE_CREDENTIALS_PATH, GDRIVE_TOKEN_PATH, GDRIVE_FOLDER_ID, DB_PATH, OBSIDIAN_DIR
+from config import (
+    GDRIVE_CREDENTIALS_PATH, GDRIVE_TOKEN_PATH, GDRIVE_FOLDER_ID,
+    GDRIVE_SERVICE_ACCOUNT_PATH, DB_PATH, OBSIDIAN_DIR,
+)
 
 try:
     from google.oauth2.credentials import Credentials
@@ -29,7 +32,14 @@ try:
 except ImportError:
     _GDRIVE_AVAILABLE = False
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+try:
+    from google.oauth2 import service_account as _sa_module
+    _SA_AVAILABLE = True
+except ImportError:
+    _SA_AVAILABLE = False
+
+# 全ファイルの読み書き権限（サービスアカウントは drive.file では不可）
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
 def _get_service():
@@ -39,6 +49,15 @@ def _get_service():
             "pip install google-api-python-client google-auth-oauthlib"
         )
 
+    # ① サービスアカウント方式（サーバー推奨、ブラウザ認証不要）
+    if (GDRIVE_SERVICE_ACCOUNT_PATH and GDRIVE_SERVICE_ACCOUNT_PATH.exists()
+            and _SA_AVAILABLE):
+        creds = _sa_module.Credentials.from_service_account_file(
+            str(GDRIVE_SERVICE_ACCOUNT_PATH), scopes=SCOPES
+        )
+        return build("drive", "v3", credentials=creds, cache_discovery=False)
+
+    # ② OAuth ユーザー方式（ローカル開発向け、フォールバック）
     creds = None
     if GDRIVE_TOKEN_PATH.exists():
         creds = Credentials.from_authorized_user_file(str(GDRIVE_TOKEN_PATH), SCOPES)
@@ -49,8 +68,7 @@ def _get_service():
         else:
             if not GDRIVE_CREDENTIALS_PATH.exists():
                 raise FileNotFoundError(
-                    f"credentials.json が見つかりません: {GDRIVE_CREDENTIALS_PATH}\n"
-                    "Google Cloud Consoleからダウンロードして配置してください。"
+                    f"認証情報が見つかりません。サービスアカウント JSON か credentials.json を配置してください。"
                 )
             flow = InstalledAppFlow.from_client_secrets_file(
                 str(GDRIVE_CREDENTIALS_PATH), SCOPES
@@ -58,7 +76,7 @@ def _get_service():
             creds = flow.run_local_server(port=0)
         GDRIVE_TOKEN_PATH.write_text(creds.to_json())
 
-    return build("drive", "v3", credentials=creds)
+    return build("drive", "v3", credentials=creds, cache_discovery=False)
 
 
 def _get_or_create_folder(service, name: str, parent_id: str) -> str:
@@ -114,16 +132,23 @@ def _upload_file(service, local_path: Path, parent_id: str):
 
 def upload_receipt_bytes(image_bytes: bytes,
                           filename: str,
-                          date_str: str = None) -> str:
+                          date_str: str = None,
+                          project_name: str = None,
+                          kind: str = "expenses") -> str:
     """
-    レシート画像のバイト列を Google Drive の receipts/YYYY-MM/ フォルダに
-    直接アップロードし、Drive ファイル ID を返す。
+    レシート画像のバイト列を Google Drive にアップロードし、Drive ファイル ID を返す。
     ローカルディスクには保存しない。
 
+    保存先:
+        project_name 指定あり → projects/<project_name>/<kind>/YYYY-MM/
+        project_name 未指定   → receipts/YYYY-MM/   （旧仕様、後方互換）
+
     Args:
-        image_bytes: 圧縮済み JPEG バイト列
-        filename:    保存するファイル名（例: "20260417_120000_abc12345.jpg"）
-        date_str:    "YYYY-MM-DD" 形式の日付（省略時は今日）
+        image_bytes:  圧縮済み JPEG バイト列
+        filename:     保存するファイル名
+        date_str:     "YYYY-MM-DD" 形式の日付（省略時は今日）
+        project_name: プロジェクト名（指定するとプロジェクト配下に保存）
+        kind:         "expenses" or "revenue"
 
     Returns:
         str: Drive ファイル ID。Drive 未設定・エラー時は空文字。
@@ -137,12 +162,27 @@ def upload_receipt_bytes(image_bytes: bytes,
         from datetime import datetime as _dt
 
         service = _get_service()
-        month_label   = date_str[:7] if date_str else _dt.now().strftime("%Y-%m")
-        receipts_root = _get_or_create_folder(service, "receipts", GDRIVE_FOLDER_ID)
-        month_folder  = _get_or_create_folder(service, month_label, receipts_root)
+        month_label = date_str[:7] if date_str else _dt.now().strftime("%Y-%m")
+
+        if project_name:
+            # 新仕様: projects/<name>/<kind>/YYYY-MM/
+            kind_folder = "revenue" if kind == "revenue" else "expenses"
+            projects_root = _get_or_create_folder(service, "projects", GDRIVE_FOLDER_ID)
+            proj_folder   = _get_or_create_folder(service, project_name, projects_root)
+            type_folder   = _get_or_create_folder(service, kind_folder, proj_folder)
+            month_folder  = _get_or_create_folder(service, month_label, type_folder)
+        else:
+            # 旧仕様（フォールバック）
+            receipts_root = _get_or_create_folder(service, "receipts", GDRIVE_FOLDER_ID)
+            month_folder  = _get_or_create_folder(service, month_label, receipts_root)
+
+        # MIME タイプを拡張子から推定
+        import mimetypes as _mt
+        guessed, _ = _mt.guess_type(filename)
+        mime = guessed or "application/octet-stream"
 
         buf   = _io.BytesIO(image_bytes)
-        media = MediaIoBaseUpload(buf, mimetype="image/jpeg", resumable=False)
+        media = MediaIoBaseUpload(buf, mimetype=mime, resumable=False)
         meta  = {"name": filename, "parents": [month_folder]}
         result = service.files().create(
             body=meta, media_body=media, fields="id"
@@ -151,6 +191,59 @@ def upload_receipt_bytes(image_bytes: bytes,
 
     except Exception:
         return ""
+
+
+def upload_project_file_bytes(project_name: str,
+                               file_bytes: bytes,
+                               filename: str,
+                               mime_type: str = "application/octet-stream",
+                               subfolder: str = "info") -> dict:
+    """
+    プロジェクト用ファイル（契約書PDF、画像など）を
+    Drive の projects/<project_name>/<subfolder>/ にアップロード。
+
+    Returns:
+        dict: {"file_id": str, "url": str, "name": str}  失敗時は file_id="" 。
+    """
+    if not GDRIVE_FOLDER_ID or not file_bytes:
+        return {"file_id": "", "url": "", "name": filename}
+
+    try:
+        from googleapiclient.http import MediaIoBaseUpload
+        import io as _io
+
+        service       = _get_service()
+        projects_root = _get_or_create_folder(service, "projects",     GDRIVE_FOLDER_ID)
+        proj_folder   = _get_or_create_folder(service, project_name,   projects_root)
+        target_folder = _get_or_create_folder(service, subfolder,      proj_folder)
+
+        buf   = _io.BytesIO(file_bytes)
+        media = MediaIoBaseUpload(buf, mimetype=mime_type, resumable=False)
+        meta  = {"name": filename, "parents": [target_folder]}
+        result = service.files().create(
+            body=meta, media_body=media,
+            fields="id,webViewLink,webContentLink",
+        ).execute()
+        return {
+            "file_id": result.get("id", ""),
+            "url":     result.get("webViewLink", "")
+                       or result.get("webContentLink", ""),
+            "name":    filename,
+        }
+    except Exception as e:
+        return {"file_id": "", "url": "", "name": filename, "error": str(e)}
+
+
+def delete_drive_file(file_id: str) -> bool:
+    """Drive 上のファイルを削除。失敗時 False。"""
+    if not file_id:
+        return False
+    try:
+        service = _get_service()
+        service.files().delete(fileId=file_id).execute()
+        return True
+    except Exception:
+        return False
 
 
 def sync_to_drive():

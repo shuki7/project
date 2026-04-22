@@ -13,7 +13,7 @@ from pathlib import Path
 from flask import (
     Blueprint, render_template, request, redirect,
     url_for, flash, send_from_directory, abort,
-    session, Response, make_response
+    session, Response, make_response,
 )
 from werkzeug.utils import secure_filename
 
@@ -47,11 +47,6 @@ from core.database import (
     get_revenue_ranking, get_recurring_summary,
     count_course_students, get_financial_statement,
     get_budget_progress, get_budgets, set_budget, init_db,
-    # プロジェクト管理
-    get_tasks, insert_task, update_task, delete_task,
-    get_contacts, insert_contact, update_contact, delete_contact,
-    get_project_info, save_project_info,
-    get_jobs, get_job_by_id, insert_job, update_job, delete_job, get_job_summary,
 )
 
 web = Blueprint("web", __name__)
@@ -88,70 +83,28 @@ def inject_lang():
     return {"lang": lang, "T": get_T(lang)}
 
 
-@web.app_template_filter("from_json")
-def from_json_filter(s):
-    if not s:
-        return []
-    try:
-        res = json.loads(s)
-        return res if isinstance(res, list) else [res]
-    except Exception:
-        return [s] if s else []
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 認証
 # ─────────────────────────────────────────────────────────────────────────────
 
 @web.before_request
 def check_auth():
-    open_endpoints = {"web.login", "web.logout", "web.recover", "web.set_lang", "web.shared_access"}
+    open_endpoints = {"web.login", "web.logout", "web.recover", "web.set_lang"}
     if request.endpoint in open_endpoints:
         return
-    
-    # 閲覧専用ユーザーの場合、許可されたページかチェック
-    is_readonly = session.get("read_only", False)
-    if is_readonly:
-        allowed = session.get("allowed_pages", ["dashboard"])
-        # エンドポイント名（例: web.dashboard）からプレフィックスを除いたものを取得
-        current_page = request.endpoint.replace("web.", "") if request.endpoint else ""
-        
-        # 特定の共通エンドポイントは許可（静的分類などは各ページに含まれるため）
-        if current_page not in allowed and current_page != "dashboard":
-            flash("このページへのアクセス権限がありません。", "error")
-            return redirect(url_for("web.dashboard"))
-
-        # 書き込み操作の制限
-        if request.method == "POST":
-            # 精算や追加などは許可しない
-            forbidden_actions = {
-                "expenses_new", "expenses_edit", "expenses_delete", "expenses_settle",
-                "revenue_new", "revenue_edit", "revenue_delete",
-                "categories_new", "categories_edit", "categories_delete",
-                "set_budget", "projects_add", "projects_share_add", "projects_share_delete",
-                # 新機能もガード
-                "tasks", "tasks_new", "tasks_edit", "tasks_delete",
-                "contacts", "contacts_new", "contacts_edit", "contacts_delete",
-                "project_info", "jobs", "jobs_new", "jobs_edit", "jobs_delete", "job_detail"
-            }
-            if current_page in forbidden_actions:
-                abort(403)
-
-    if not session.get("logged_in") and not is_readonly:
+    if not session.get("logged_in"):
         return redirect(url_for("web.login", next=request.path))
     
     # プロジェクト選択のチェック
     project = _get_active_project()
-    if not project and request.endpoint not in ("web.launcher", "web.select_project", "web.add_project", "web.login", "web.logout"):
+    if not project and request.endpoint not in ("web.launcher", "web.select_project", "web.add_project"):
         return redirect(url_for("web.launcher"))
     
     if project:
-        # DBパスを flask.g にセット
-        db_path = PROJECTS_FILE.parent / project.get("db", "kakeibo.db")
-        g.db_path = db_path
+        # DBパスを flask.g にセット（core.database.get_connection で使用される）
+        db_name = project.get("db", "kakeibo.db")
+        g.db_path = PROJECTS_FILE.parent / db_name
         g.project = project
-        g.read_only = is_readonly
-        g.allowed_pages = session.get("allowed_pages", [])
 
 
 @web.route("/login", methods=["GET", "POST"])
@@ -203,16 +156,13 @@ def launcher():
     return render_template("launcher.html", projects=projects)
 
 
-@web.route("/choose/<project_id>")
+@web.route("/projects/select/<project_id>")
 def select_project(project_id):
     projects = _load_projects()
-    project = next((p for p in projects if p["id"] == project_id), None)
-    
-    if project:
+    if any(p["id"] == project_id for p in projects):
         session["project_id"] = project_id
-        session.modified = True
+        flash("ワークスペースを切り替えました。", "success")
         return redirect(url_for("web.dashboard"))
-    
     flash("プロジェクトが見つかりません。", "error")
     return redirect(url_for("web.launcher"))
 
@@ -256,76 +206,7 @@ def add_project():
     flash(f"プロジェクト「{name}」を作成しました。", "success")
     return redirect(url_for("web.launcher"))
 
-
-@web.route("/share/<token>")
-def shared_access(token):
-    """トークンによる閲覧専用アクセスを許可する。"""
-    projects = _load_projects()
-    for p in projects:
-        shares = p.get("shares", [])
-        for s in shares:
-            if s["id"] == token:
-                # 閲覧専用セッションを開始
-                session.clear()
-                session["project_id"] = p["id"]
-                session["read_only"] = True
-                session["allowed_pages"] = s.get("allowed_pages", ["dashboard"])
-                flash(f"{p['name']} の閲覧モードでログインしました。", "success")
-                return redirect(url_for("web.dashboard"))
-    
-    flash("無効な共有リンクです。", "error")
-    return redirect(url_for("web.login"))
-
-
-@web.route("/projects/shares/add", methods=["POST"])
-def projects_share_add():
-    """プロジェクトに新しい共有リンクを追加する。"""
-    project_id = request.form.get("project_id")
-    partner_name = request.form.get("partner_name", "パートナー様").strip()
-    allowed_pages = request.form.getlist("allowed_pages")
-    
-    if not allowed_pages:
-        allowed_pages = ["dashboard"] # 最小権限
-
-    projects = _load_projects()
-    target = next((p for p in projects if p["id"] == project_id), None)
-    if not target:
-        flash("プロジェクトが見つかりません。", "error")
-        return redirect(url_for("web.launcher"))
-
-    if "shares" not in target:
-        target["shares"] = []
-    
-    new_share = {
-        "id": str(uuid.uuid4()),
-        "name": partner_name,
-        "allowed_pages": allowed_pages,
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }
-    target["shares"].append(new_share)
-    _save_projects(projects)
-    
-    flash(f"「{partner_name}」用の共有リンクを作成しました。", "success")
-    return redirect(url_for("web.launcher"))
-
-
-@web.route("/projects/shares/delete", methods=["POST"])
-def projects_share_delete():
-    """共有リンクを削除する。"""
-    project_id = request.form.get("project_id")
-    share_id = request.form.get("share_id")
-
-    projects = _load_projects()
-    target = next((p for p in projects if p["id"] == project_id), None)
-    if target and "shares" in target:
-        target["shares"] = [s for s in target["shares"] if s["id"] != share_id]
-        _save_projects(projects)
-        flash("共有リンクを削除しました。", "success")
-    
-    return redirect(url_for("web.launcher"))
-
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "pdf"}
-IMAGE_EXTENSIONS   = {"png", "jpg", "jpeg", "gif", "webp"}
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 PAYMENT_METHODS = ["CASH", "TRANSFER", "DEBIT", "立替え"]
 
 
@@ -333,10 +214,11 @@ def _allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def _save_receipt(file, date_str: str = None, kind: str = "expenses") -> str:
+def _save_receipt(file, date_str: str = None) -> str:
     """
-    アップロードされたファイルを圧縮して WebP 形式で Google Drive に保存する。
-    成功時は 'gdrive:<fileId>' を返す。
+    アップロードされたファイルを圧縮して Google Drive に保存する。
+    成功時は 'gdrive:<fileId>' を返す。Drive 未設定時はローカル保存。
+    ファイルがない場合は None を返す。
     """
     if not file or file.filename == "":
         return None
@@ -344,30 +226,15 @@ def _save_receipt(file, date_str: str = None, kind: str = "expenses") -> str:
         return None
 
     raw_bytes = file.read()
-    ext_original = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "jpg"
-    
-    # 画像は WebP 圧縮、PDF などはそのまま
-    if ext_original in IMAGE_EXTENSIONS:
-        compressed = compress_image(raw_bytes)
-        ext_target = "webp"
-    else:
-        compressed = raw_bytes
-        ext_target = ext_original
-
+    compressed = compress_image(raw_bytes)
     if date_str is None:
         date_str = datetime.now().strftime("%Y-%m-%d")
 
-    filename = f"{date_str.replace('-', '')}_{uuid.uuid4().hex[:8]}.{ext_target}"
+    ext = file.filename.rsplit(".", 1)[1].lower() if "." in file.filename else "jpg"
+    filename = f"{date_str.replace('-', '')}_{uuid.uuid4().hex[:8]}.{ext}"
 
-    # 現在のプロジェクト名を取得（g.project から）
-    proj = getattr(g, "project", None)
-    project_name = proj.get("name") if proj else None
-
-    # Google Drive にアップロード
-    drive_id = upload_receipt_bytes(
-        compressed, filename, date_str,
-        project_name=project_name, kind=kind,
-    )
+    # Google Drive にアップロード（容量節約のためローカル保存しない）
+    drive_id = upload_receipt_bytes(compressed, filename, date_str)
     if drive_id:
         return f"gdrive:{drive_id}"
 
@@ -392,8 +259,6 @@ def _sort_clause(sort: str, order: str, allowed: dict) -> str:
 @web.context_processor
 def inject_globals():
     project = getattr(g, "project", None)
-    read_only = getattr(g, "read_only", False)
-    allowed_pages = getattr(g, "allowed_pages", [])
     return {
         "fmt_idr": fmt_idr,
         "company_name": project["name"] if project else COMPANY_NAME,
@@ -401,8 +266,6 @@ def inject_globals():
         "current_year": datetime.now().year,
         "current_month": datetime.now().month,
         "active_project": project,
-        "read_only": read_only,
-        "allowed_pages": allowed_pages,
     }
 
 
@@ -412,11 +275,6 @@ def inject_globals():
 
 @web.route("/")
 def dashboard():
-    # 統合運用のため、トップページはまずプロジェクト選択画面（ランチャー）へ
-    return redirect(url_for("web.launcher"))
-
-@web.route("/dashboard")
-def job_dashboard():
     now = datetime.now()
     year  = int(request.args.get("year",  now.year))
     month = int(request.args.get("month", now.month))
@@ -623,17 +481,7 @@ def expenses_new():
             )
 
         try:
-            files = request.files.getlist("receipt")
-            receipt_paths = []
-            # 最大5枚制限
-            for f in files[:5]:
-                path = _save_receipt(f, date)
-                if path:
-                    receipt_paths.append(path)
-            
-            # JSON 形式で保存
-            receipt_path_json = json.dumps(receipt_paths) if receipt_paths else None
-
+            receipt_path = _save_receipt(receipt_file, date)
             insert_expense(
                 name=name,
                 amount=float(amount),
@@ -643,25 +491,19 @@ def expenses_new():
                 payee=payee,
                 memo=memo,
                 is_recurring=is_recurring,
-                receipt_path=receipt_path_json,
-                contact_id=request.form.get("contact_id") or None,
-                job_id=request.form.get("job_id") or None,
+                receipt_path=receipt_path,
             )
-            flash(f"経費を追加しました（添付: {len(receipt_paths)}枚）", "success")
+            flash("経費を追加しました。", "success")
             return redirect(url_for("web.expenses_list"))
         except Exception as e:
             flash(f"エラーが発生しました: {e}", "error")
 
     today = datetime.now().strftime("%Y-%m-%d")
-    contacts = get_contacts('vendor')
-    jobs = get_jobs('active')
     return render_template(
         "expenses/form.html",
         categories=categories,
         payment_methods=PAYMENT_METHODS,
         expense={"date": today},
-        contacts=contacts,
-        jobs=jobs,
         title="経費を追加",
         page="expenses",
     )
@@ -687,29 +529,19 @@ def expenses_edit(expense_id):
 
         if not name or not amount or not date:
             flash("日付・名目・金額は必須です。", "error")
-            contacts = get_contacts('vendor')
-            jobs = get_jobs('active')
             return render_template(
                 "expenses/form.html",
                 categories=categories,
                 payment_methods=PAYMENT_METHODS,
                 expense=expense,
-                contacts=contacts,
-                jobs=jobs,
                 title="経費を編集",
                 page="expenses",
             )
 
         try:
-            files = request.files.getlist("receipt")
-            new_paths = []
-            for f in files[:5]:
-                path = _save_receipt(f, date)
-                if path:
-                    new_paths.append(path)
-            
-            # 新しいアップロードがあれば更新、なければ既存を維持
-            receipt_path = json.dumps(new_paths) if new_paths else expense.get("receipt_path")
+            # 新しいレシートがアップロードされた場合のみ更新
+            new_receipt = _save_receipt(receipt_file, date)
+            receipt_path = new_receipt if new_receipt else expense.get("receipt_path")
 
             update_expense(
                 expense_id=expense_id,
@@ -722,23 +554,17 @@ def expenses_edit(expense_id):
                 memo=memo,
                 is_recurring=is_recurring,
                 receipt_path=receipt_path,
-                contact_id=request.form.get("contact_id") or None,
-                job_id=request.form.get("job_id") or None,
             )
             flash("経費を更新しました。", "success")
             return redirect(url_for("web.expenses_list"))
         except Exception as e:
             flash(f"エラーが発生しました: {e}", "error")
 
-    contacts = get_contacts('vendor')
-    jobs = get_jobs('active')
     return render_template(
         "expenses/form.html",
         categories=categories,
         payment_methods=PAYMENT_METHODS,
         expense=expense,
-        contacts=contacts,
-        jobs=jobs,
         title="経費を編集",
         page="expenses",
     )
@@ -837,41 +663,24 @@ def revenue_new():
             )
 
         try:
-            files = request.files.getlist("receipt")
-            receipt_paths = []
-            for f in files[:5]:
-                path = _save_receipt(f, date, kind="revenue")
-                if path:
-                    receipt_paths.append(path)
-            
-            receipt_path_json = json.dumps(receipt_paths) if receipt_paths else None
-
+            receipt_path = _save_receipt(receipt_file, date)
             insert_revenue(
                 name=name,
                 amount=float(amount),
                 date=date,
                 student_name=student_name,
                 memo=memo,
-                receipt_path=receipt_path_json,
-                contact_id=request.form.get("contact_id") or None,
-                job_id=request.form.get("job_id") or None,
-                category_id=request.form.get("category_id") or None,
+                receipt_path=receipt_path,
             )
-            flash(f"収入を追加しました（添付: {len(receipt_paths)}枚）", "success")
+            flash("収入を追加しました。", "success")
             return redirect(url_for("web.revenue_list"))
         except Exception as e:
             flash(f"エラーが発生しました: {e}", "error")
 
     today = datetime.now().strftime("%Y-%m-%d")
-    contacts = get_contacts('customer')
-    jobs = get_jobs('active')
-    categories = get_all_categories()
     return render_template(
         "revenue/form.html",
         revenue={"date": today},
-        contacts=contacts,
-        jobs=jobs,
-        categories=categories,
         title="収入を追加",
         page="revenue",
     )
@@ -901,16 +710,8 @@ def revenue_edit(revenue_id):
             )
 
         try:
-            files = request.files.getlist("receipt")
-            new_paths = []
-            for f in files[:5]:
-                path = _save_receipt(f, date, kind="revenue")
-                if path:
-                    new_paths.append(path)
-            
-            # 新しいアップロードがあれば更新、なければ既存を維持
-            receipt_path = json.dumps(new_paths) if new_paths else revenue.get("receipt_path")
-
+            new_receipt = _save_receipt(receipt_file, date)
+            receipt_path = new_receipt if new_receipt else revenue.get("receipt_path")
             update_revenue(
                 revenue_id=revenue_id,
                 name=name,
@@ -919,24 +720,15 @@ def revenue_edit(revenue_id):
                 student_name=student_name,
                 memo=memo,
                 receipt_path=receipt_path,
-                contact_id=request.form.get("contact_id") or None,
-                job_id=request.form.get("job_id") or None,
-                category_id=request.form.get("category_id") or None,
             )
             flash("収入を更新しました。", "success")
             return redirect(url_for("web.revenue_list"))
         except Exception as e:
             flash(f"エラーが発生しました: {e}", "error")
 
-    contacts = get_contacts('customer')
-    jobs = get_jobs('active')
-    categories = get_all_categories()
     return render_template(
         "revenue/form.html",
         revenue=revenue,
-        contacts=contacts,
-        jobs=jobs,
-        categories=categories,
         title="収入を編集",
         page="revenue",
     )
@@ -1185,9 +977,6 @@ def receipt_ocr():
                 student_name=request.form.get("student_name", ""),
                 memo=memo,
                 receipt_path=receipt_ref,
-                job_id=request.form.get("job_id") or None,
-                contact_id=request.form.get("contact_id") or None,
-                category_id=upsert_category(request.form.get("category", "")) if request.form.get("category") else None,
             )
             flash("売上を記帳しました！", "success")
         else:
@@ -1201,8 +990,6 @@ def receipt_ocr():
                 payee=request.form.get("payee", ""),
                 memo=memo,
                 receipt_path=receipt_ref,
-                job_id=request.form.get("job_id") or None,
-                contact_id=request.form.get("contact_id") or None,
             )
             flash("経費を記帳しました！", "success")
         return redirect(url_for("web.dashboard"))
@@ -1239,10 +1026,6 @@ def receipt_ocr():
         filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_web.jpg"
         drive_id = upload_receipt_bytes(compressed, filename, date_str)
 
-        contacts_v = get_contacts('vendor')
-        contacts_c = get_contacts('customer')
-        jobs = get_jobs('active')
-
         return render_template(
             "receipt_ocr.html",
             step=2,
@@ -1250,9 +1033,6 @@ def receipt_ocr():
             result=result,
             cat_name=cat_name,
             categories=categories,
-            contacts_v=contacts_v,
-            contacts_c=contacts_c,
-            jobs=jobs,
             drive_id=drive_id,
             filename=filename,
             orig_kb=orig_kb,
@@ -1263,125 +1043,3 @@ def receipt_ocr():
     record_type = request.args.get("type", "")
     return render_template("receipt_ocr.html", step=1,
                            record_type=record_type, categories=categories)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# プロジェクト管理機能 (Management Features)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@web.route("/tasks", methods=["GET", "POST"])
-def tasks():
-    if request.method == "POST":
-        action = request.form.get("action")
-        if action == "add":
-            insert_task(
-                title=request.form.get("title"),
-                description=request.form.get("description"),
-                priority=request.form.get("priority", "middle"),
-                due_date=request.form.get("due_date")
-            )
-            flash("タスクを追加しました", "success")
-        elif action == "update":
-            update_task(
-                task_id=request.form.get("id"),
-                title=request.form.get("title"),
-                description=request.form.get("description"),
-                status=request.form.get("status"),
-                priority=request.form.get("priority"),
-                due_date=request.form.get("due_date"),
-                is_archived=int(request.form.get("is_archived", 0))
-            )
-        return redirect(url_for("web.tasks"))
-
-    include_archived = request.args.get("archived") == "1"
-    tasks_list = get_tasks(include_archived)
-    return render_template("tasks/list.html", tasks=tasks_list, archived=include_archived, page="tasks")
-
-@web.route("/tasks/delete/<id>", methods=["POST"])
-def tasks_delete(id):
-    delete_task(id)
-    flash("タスクを削除しました", "success")
-    return redirect(url_for("web.tasks"))
-
-
-@web.route("/contacts", methods=["GET", "POST"])
-def contacts():
-    if request.method == "POST":
-        id = request.form.get("id")
-        data = {
-            "contact_type": request.form.get("type"),
-            "name": request.form.get("name"),
-            "contact_person": request.form.get("contact_person"),
-            "phone": request.form.get("phone"),
-            "email": request.form.get("email"),
-            "address": request.form.get("address"),
-            "bank_info": request.form.get("bank_info"),
-            "memo": request.form.get("memo")
-        }
-        if id:
-            update_contact(id, **data)
-            flash("連絡先を更新しました", "success")
-        else:
-            insert_contact(**data)
-            flash("連絡先を追加しました", "success")
-        return redirect(url_for("web.contacts"))
-
-    contacts_list = get_contacts()
-    return render_template("contacts/list.html", contacts=contacts_list, page="contacts")
-
-@web.route("/contacts/delete/<id>", methods=["POST"])
-def contacts_delete(id):
-    delete_contact(id)
-    flash("連絡先を削除しました", "success")
-    return redirect(url_for("web.contacts"))
-
-
-@web.route("/info", methods=["GET", "POST"])
-def project_info():
-    if request.method == "POST":
-        save_project_info(
-            bank_info=request.form.get("bank_info"),
-            facility_info=request.form.get("facility_info"),
-            emergency_info=request.form.get("emergency_info")
-        )
-        flash("情報を保存しました", "success")
-        return redirect(url_for("web.project_info"))
-
-    info = get_project_info()
-    return render_template("project_info/view.html", info=info, page="info")
-
-
-@web.route("/jobs", methods=["GET", "POST"])
-def jobs():
-    if request.method == "POST":
-        id = request.form.get("id")
-        data = {
-            "name": request.form.get("name"),
-            "start_date": request.form.get("start_date"),
-            "status": request.form.get("status", "active")
-        }
-        if id:
-            update_job(id, **data)
-            flash("案件を更新しました", "success")
-        else:
-            insert_job(**data)
-            flash("案件を追加しました", "success")
-        return redirect(url_for("web.jobs"))
-
-    status_filter = request.args.get("status")
-    jobs_list = get_jobs(status_filter)
-    return render_template("jobs/list.html", jobs=jobs_list, status_filter=status_filter, page="jobs")
-
-@web.route("/jobs/<id>")
-def job_detail(id):
-    job = get_job_by_id(id)
-    if not job:
-        abort(404)
-    summary = get_job_summary(id)
-    return render_template("jobs/detail.html", job=job, summary=summary, page="jobs")
-
-@web.route("/jobs/delete/<id>", methods=["POST"])
-def jobs_delete(id):
-    delete_job(id)
-    flash("案件を削除しました", "success")
-    return redirect(url_for("web.jobs"))

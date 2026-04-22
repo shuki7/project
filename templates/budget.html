@@ -69,10 +69,14 @@
           <tr>
             <td>{{ p.name }}</td>
             <td style="text-align:right;">
+              {% if not read_only %}
               <input type="number" name="budget_{{ p.id }}"
                      value="{{ budgets.get(p.id, '') }}"
                      placeholder="0" min="0" step="1000"
                      style="width:160px; text-align:right;">
+              {% else %}
+                <span style="font-weight:700;">{{ fmt_idr(budgets.get(p.id, 0)) }}</span>
+              {% endif %}
             </td>
             <td class="amount {% if p.actual > 0 %}negative{% else %}{% endif %}">{{ fmt_idr(p.actual) }}</td>
           </tr>
@@ -80,9 +84,11 @@
         </tbody>
       </table>
     </div>
+    {% if not read_only %}
     <div style="margin-top:1rem; text-align:right;">
       <button type="submit" class="btn btn-primary">💾 保存</button>
     </div>
+    {% endif %}
   </form>
 </div>
 {% endblock %}

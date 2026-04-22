@@ -4,7 +4,9 @@
 {% block content %}
 <div class="page-header">
   <h1>勘定科目</h1>
+  {% if not read_only %}
   <a href="{{ url_for('web.categories_new') }}" class="btn btn-primary">＋ 新規追加</a>
+  {% endif %}
 </div>
 
 <div class="card" style="padding:0; overflow:hidden;">
@@ -33,12 +35,14 @@
               {% endif %}
             </td>
             <td class="actions">
+              {% if not read_only %}
               <a href="{{ url_for('web.categories_edit', cat_id=cat.id) }}" class="btn btn-edit">✏️</a>
               <form method="post" action="{{ url_for('web.categories_delete', cat_id=cat.id) }}"
                     style="display:inline;"
                     onsubmit="return confirmDelete({{ cat.expense_count }}, '{{ cat.name }}');">
                 <button type="submit" class="btn btn-danger">🗑️</button>
               </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

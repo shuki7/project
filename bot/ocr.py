@@ -92,7 +92,8 @@ def compress_image(image_bytes: bytes,
         img.thumbnail((max_px, max_px), Image.LANCZOS)
 
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        # WebP形式で保存（method=6 は圧縮効率最大設定）
+        img.save(buf, format="WEBP", quality=quality, method=6)
         compressed = buf.getvalue()
         return compressed if len(compressed) < len(image_bytes) else image_bytes
 

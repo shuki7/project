@@ -1,0 +1,132 @@
+{% extends "project/_base.html" %}
+{% block title %}URL一覧 — プロジェクト管理{% endblock %}
+
+{% block extra_head %}
+<style>
+  .project-group {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    border: 1px solid #eef1f6;
+  }
+  .group-head {
+    padding: 1.2rem 1.5rem;
+    background: #16213e;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+  }
+  .group-head .emoji { font-size: 1.5rem; }
+  .group-head .name { font-weight: 700; font-size: 1.1rem; }
+  
+  .url-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .url-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1.2rem;
+    transition: transform .2s, box-shadow .2s;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .url-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    border-color: #cbd5e1;
+  }
+  
+  .url-title {
+    font-weight: 700;
+    font-size: .95rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .url-link {
+    font-size: .82rem;
+    color: #3b82f6;
+    word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    opacity: 0.8;
+  }
+  .url-desc {
+    font-size: .85rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  .url-notes {
+    font-size: .75rem;
+    color: #94a3b8;
+    font-style: italic;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #94a3b8;
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🔗 プロジェクト関連URL一覧</h1>
+</div>
+
+{% if all_urls %}
+  {% for group in all_urls %}
+    <div class="project-group">
+      <div class="group-head" style="border-left: 8px solid {{ group.project.color or '#16213e' }}">
+        <span class="emoji">{{ group.project.emoji or '📁' }}</span>
+        <span class="name">{{ group.project.name }}</span>
+        <div style="flex:1"></div>
+        <a href="{{ url_for('project.info', project_id=group.project.id) }}" class="btn btn-sm" style="background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); color: #fff; text-decoration: none;">編集 / 追加</a>
+      </div>
+      <div class="url-grid">
+        {% for it in group.items %}
+          {% set target_url = it.fields.get('url') %}
+          {% if not (target_url.startswith('http://') or target_url.startswith('https://')) %}
+            {% set target_url = 'https://' ~ target_url %}
+          {% endif %}
+          <a href="{{ target_url }}" target="_blank" class="url-card">
+            <div class="url-title">
+              <span>🚀</span>
+              {{ it.fields.get('title') or it.label or '名称未設定' }}
+            </div>
+            <div class="url-link">{{ it.fields.get('url') }}</div>
+            {% if it.fields.get('description') %}
+              <div class="url-desc">{{ it.fields.get('description') }}</div>
+            {% endif %}
+            {% if it.fields.get('notes') %}
+              <div class="url-notes">備考: {{ it.fields.get('notes') }}</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="card empty-state">
+    <div class="icon">🔗</div>
+    <h3>URLがまだ登録されていません</h3>
+    <p>各プロジェクトの「重要情報」から「🔗 関連URL」を追加してください。</p>
+    <div style="margin-top:1.5rem">
+      <a href="{{ url_for('project.list_projects') }}" class="btn btn-primary">プロジェクト一覧へ</a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

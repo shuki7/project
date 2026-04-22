@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}プロジェクト管理{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+    nav {
+      background: #16213e;
+      color: #fff;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 56px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    .nav-brand {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #e2c97e;
+      text-decoration: none;
+    }
+    nav a.nav-link {
+      color: #c5cae9;
+      text-decoration: none;
+      font-size: .9rem;
+      padding: .4rem .9rem;
+      border-radius: 6px;
+      transition: background .15s, color .15s;
+    }
+    nav a.nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+    nav a.nav-link.back-btn {
+      background: rgba(255,255,255,.12);
+      font-weight: 700;
+      color: #fff;
+      margin-right: .5rem;
+    }
+    nav a.nav-link.back-btn:hover { background: rgba(255,255,255,.2); }
+    nav .spacer { flex: 1; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    .flash-list { list-style: none; margin-bottom: 1rem; }
+    .flash-item {
+      padding: .75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: .5rem;
+      font-size: .92rem;
+      font-weight: 500;
+    }
+    .flash-success { background: #d8f3dc; color: #1b4332; border-left: 4px solid #2d6a4f; }
+    .flash-error   { background: #ffe5e5; color: #7b1a1a; border-left: 4px solid #c1121f; }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+      gap: .75rem;
+    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 700; color: #16213e; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.09);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-primary { background: #16213e; color: #fff; }
+    .btn-success { background: #2d6a4f; color: #fff; }
+    .btn-danger  { background: #c1121f; color: #fff; }
+    .btn-edit    { background: #e9ecef; color: #333; }
+    .btn-sm      { padding: .35rem .7rem; font-size: .82rem; }
+
+    .form-group { margin-bottom: 1.1rem; }
+    label {
+      display: block;
+      font-size: .88rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: .35rem;
+    }
+    input[type="text"], input[type="number"], input[type="color"],
+    select, textarea {
+      width: 100%;
+      padding: .55rem .8rem;
+      border: 1.5px solid #dde1ea;
+      border-radius: 6px;
+      font-size: .95rem;
+      font-family: inherit;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #16213e;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    input[type="color"] { height: 44px; padding: .25rem; cursor: pointer; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <a class="nav-link back-btn" href="javascript:history.back()">← 戻る</a>
+    <a class="nav-brand" href="{{ url_for('project.list_projects') }}">📁 プロジェクト管理</a>
+    <a class="nav-link" href="{{ url_for('project.list_projects') }}">一覧</a>
+    <a class="nav-link" href="{{ url_for('project.new_project') }}">＋ 新規追加</a>
+    <a class="nav-link" href="{{ url_for('project.url_list') }}">URL一覧</a>
+    <div class="spacer"></div>
+    <a class="nav-link" href="{{ url_for('web.dashboard') }}">経理 (旧)</a>
+    <a class="nav-link" href="{{ url_for('web.logout') }}">ログアウト</a>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="flash-item flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

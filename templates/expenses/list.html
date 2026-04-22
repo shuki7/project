@@ -16,7 +16,9 @@
 {% block content %}
 <div class="page-header">
   <h1>経費一覧</h1>
+  {% if not read_only %}
   <a href="{{ url_for('web.expenses_new') }}" class="btn btn-primary">＋ 新規追加</a>
+  {% endif %}
 </div>
 
 <!-- フィルターバー -->
@@ -74,22 +76,28 @@
             <td class="amount">{{ fmt_idr(e.amount) }}</td>
             <td class="actions">
               {% if e.receipt_path %}
-                {% if e.receipt_path.startswith('gdrive:') %}
-                  <a href="https://drive.google.com/file/d/{{ e.receipt_path[7:] }}/view"
-                     target="_blank" class="btn btn-edit" title="レシートを表示（Google Drive）"
-                     style="padding:.3rem .5rem;">📎</a>
-                {% else %}
-                  <a href="{{ url_for('web.serve_receipt', filename=e.receipt_path) }}"
-                     target="_blank" class="btn btn-edit" title="レシートを表示"
-                     style="padding:.3rem .5rem;">📎</a>
-                {% endif %}
+                {% set paths = e.receipt_path | from_json %}
+                {% for p in paths %}
+                  {% if p.startswith('gdrive:') %}
+                    <a href="https://drive.google.com/file/d/{{ p[7:] }}/view"
+                       target="_blank" class="btn btn-edit" title="添付を表示（Google Drive）"
+                       style="padding:.3rem .5rem;">📎</a>
+                  {% else %}
+                    <a href="{{ url_for('web.serve_receipt', filename=p) }}"
+                       target="_blank" class="btn btn-edit" title="添付を表示"
+                       style="padding:.3rem .5rem;">📎</a>
+                  {% endif %}
+                {% endfor %}
               {% endif %}
+              
+              {% if not read_only %}
               <a href="{{ url_for('web.expenses_edit', expense_id=e.id) }}" class="btn btn-edit">✏️</a>
               <form method="post" action="{{ url_for('web.expenses_delete', expense_id=e.id) }}"
                     style="display:inline;"
                     onsubmit="return confirm('「{{ e.name }}」を削除しますか？');">
                 <button type="submit" class="btn btn-danger">🗑️</button>
               </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

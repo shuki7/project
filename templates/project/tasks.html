@@ -1,0 +1,211 @@
+{% extends "project/_base.html" %}
+{% block title %}{{ project.name }} — タスク管理{% endblock %}
+
+{% block extra_head %}
+<style>
+  .project-mini {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: .8rem 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    border-left: 5px solid {{ project.color or '#16213e' }};
+  }
+  .project-mini .emoji { font-size: 1.6rem; }
+  .project-mini .name { font-weight: 700; color: #16213e; font-size: 1.05rem; }
+  .project-mini .crumb { font-size: .78rem; color: #888; }
+
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: .9rem;
+    overflow-x: auto;
+    padding-bottom: .5rem;
+  }
+  @media (max-width: 1100px) {
+    .kanban { grid-template-columns: repeat(5, 240px); }
+  }
+
+  .col {
+    background: #eef1f6;
+    border-radius: 10px;
+    padding: .7rem .55rem;
+    min-height: 200px;
+  }
+  .col-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .25rem .4rem .55rem;
+    border-bottom: 2px solid;
+    margin-bottom: .55rem;
+    font-weight: 700;
+    font-size: .92rem;
+  }
+  .col-head .cnt {
+    background: rgba(0,0,0,.07);
+    color: #333;
+    border-radius: 10px;
+    font-size: .72rem;
+    padding: .1rem .55rem;
+    font-weight: 700;
+  }
+
+  .task-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: .7rem .8rem;
+    margin-bottom: .55rem;
+    border-left: 4px solid #ccc;
+  }
+  .task-card .title {
+    font-weight: 600;
+    color: #16213e;
+    font-size: .92rem;
+    margin-bottom: .3rem;
+    line-height: 1.35;
+  }
+  .task-card .desc {
+    font-size: .77rem;
+    color: #666;
+    margin-bottom: .4rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .task-card .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    font-size: .7rem;
+    color: #888;
+    margin-bottom: .45rem;
+  }
+  .task-card .meta .pill {
+    background: #eef1f6;
+    color: #16213e;
+    padding: .1rem .45rem;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+  .task-card .meta .pill.due-overdue {
+    background: #ffe5e5;
+    color: #7b1a1a;
+  }
+  .task-card .meta .pill.prio-high   { background: #ffe5e5; color: #7b1a1a; }
+  .task-card .meta .pill.prio-middle { background: #e7f0ff; color: #0d3b8c; }
+  .task-card .meta .pill.prio-low    { background: #eaecef; color: #555; }
+
+  .task-actions {
+    display: flex;
+    gap: .3rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .task-actions form { display: inline; margin: 0; }
+  .task-actions select {
+    font-size: .7rem;
+    padding: .15rem .3rem;
+    border: 1px solid #ccd2dc;
+    border-radius: 4px;
+    background: #fafbfc;
+    cursor: pointer;
+  }
+  .task-actions a, .task-actions button {
+    font-size: .7rem;
+    padding: .15rem .45rem;
+    border-radius: 4px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    background: #e9ecef;
+    color: #333;
+  }
+  .task-actions .del { background: #f8d7da; color: #721c24; }
+
+  .col-empty {
+    text-align: center;
+    color: #aaa;
+    font-size: .78rem;
+    padding: 1rem .3rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-mini">
+  <div class="emoji">{{ project.emoji or '📁' }}</div>
+  <div>
+    <div class="name">{{ project.name }}</div>
+    <div class="crumb">
+      <a href="{{ url_for('project.detail', project_id=project.id) }}" style="color:#888;">← プロジェクト詳細</a>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1>✅ タスク管理</h1>
+  <div style="display:flex; gap:.5rem;">
+    {% if show_archived %}
+      <a href="{{ url_for('project.tasks_list', project_id=project.id) }}" class="btn btn-sm btn-edit">アクティブのみ</a>
+    {% else %}
+      <a href="{{ url_for('project.tasks_list', project_id=project.id, archived=1) }}" class="btn btn-sm btn-edit">アーカイブ含む</a>
+    {% endif %}
+    <a href="{{ url_for('project.tasks_new', project_id=project.id) }}" class="btn btn-success">＋ 新規タスク</a>
+  </div>
+</div>
+
+<div class="kanban">
+  {% for key, label, color in statuses %}
+    <div class="col">
+      <div class="col-head" style="border-color: {{ color }}; color: {{ color }};">
+        <span>{{ label }}</span>
+        <span class="cnt">{{ columns[key]|length }}</span>
+      </div>
+      {% for t in columns[key] %}
+        {% set prio = t.priority or 'middle' %}
+        <div class="task-card" style="border-left-color: {{ color }};">
+          <div class="title">{{ t.title }}</div>
+          {% if t.description %}
+            <div class="desc">{{ t.description }}</div>
+          {% endif %}
+          <div class="meta">
+            <span class="pill prio-{{ prio }}">
+              {% if prio == 'high' %}🔥 高
+              {% elif prio == 'low' %}低
+              {% else %}中{% endif %}
+            </span>
+            {% if t.due_date %}
+              <span class="pill {% if t.due_date < today and key not in ['done','rejected'] %}due-overdue{% endif %}">
+                📅 {{ t.due_date }}
+              </span>
+            {% endif %}
+            {% if t.assignee %}
+              <span class="pill">👤 {{ t.assignee }}</span>
+            {% endif %}
+          </div>
+          <div class="task-actions">
+            <form method="post" action="{{ url_for('project.tasks_set_status', project_id=project.id, task_id=t.id) }}">
+              <select name="status" onchange="this.form.submit()" title="ステータス変更">
+                {% for k, l, c in statuses %}
+                  <option value="{{ k }}" {% if k == key %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            <a href="{{ url_for('project.tasks_edit', project_id=project.id, task_id=t.id) }}">編集</a>
+            <form method="post" action="{{ url_for('project.tasks_delete', project_id=project.id, task_id=t.id) }}"
+                  onsubmit="return confirm('このタスクを削除しますか？');">
+              <button type="submit" class="del">削除</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <div class="col-empty">— 空 —</div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}案件詳細: {{ job.name }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💎 {{ job.name }}</h1>
+    <a href="{{ url_for('web.jobs') }}" class="btn btn-edit">← 案件一覧に戻る</a>
+</div>
+
+<!-- 利益サマリー -->
+<div class="grid-4">
+    <div class="card">
+        <div class="card-title">{{ T.job_sales }}</div>
+        <div class="card-value neutral">IDR {{ "{:,.0f}".format(summary.revenue_total) }}</div>
+    </div>
+    <div class="card">
+        <div class="card-title">{{ T.job_cost }}</div>
+        <div class="card-value negative">IDR {{ "{:,.0f}".format(summary.expenses_total) }}</div>
+    </div>
+    <div class="card">
+        <div class="card-title">{{ T.job_profit }}</div>
+        <div class="card-value {% if summary.profit > 0 %}positive{% elif summary.profit < 0 %}negative{% endif %}">
+            IDR {{ "{:,.0f}".format(summary.profit) }}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">利益率 (Margin)</div>
+        <div class="card-value {% if summary.profit > 0 %}positive{% elif summary.profit < 0 %}negative{% endif %}">
+            {% if summary.revenue_total > 0 %}
+                {{ "{:,.1f}%".format(summary.profit / summary.revenue_total * 100) }}
+            {% else %}
+                0.0%
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="grid-3" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- 販売内訳 -->
+    <div>
+        <div class="page-header" style="margin-bottom: 0.5rem;">
+            <h2 style="font-size: 1.1rem;">📈 {{ T.job_sales }} 内訳</h2>
+        </div>
+        <div class="card" style="padding: 0;">
+            {% if not summary.revenue %}
+            <p class="text-muted" style="padding: 2rem; text-align: center;">売上データが紐付いていません</p>
+            {% else %}
+            <div class="table-wrap">
+                <table style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>{{ T.th_date }}</th>
+                            <th>{{ T.th_name }} / カテゴリ</th>
+                            <th class="amount">{{ T.th_amount }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in summary.revenue %}
+                        <tr>
+                            <td>{{ r.date }}</td>
+                            <td>
+                                <div>{{ r.name }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    {{ r.category_name or '（カテゴリなし）' }}
+                                    {% if r.customer_name or r.student_name %} | {{ r.customer_name or r.student_name }}{% endif %}
+                                </div>
+                            </td>
+                            <td class="amount">{{ "{:,.0f}".format(r.amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 仕入れ・経費内訳 -->
+    <div>
+        <div class="page-header" style="margin-bottom: 0.5rem;">
+            <h2 style="font-size: 1.1rem;">💸 {{ T.job_cost }} 内訳</h2>
+        </div>
+        <div class="card" style="padding: 0;">
+            {% if not summary.expenses %}
+            <p class="text-muted" style="padding: 2rem; text-align: center;">経費データが紐付いていません</p>
+            {% else %}
+            <div class="table-wrap">
+                <table style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>{{ T.th_date }}</th>
+                            <th>名目 / 支払先</th>
+                            <th class="amount">{{ T.th_amount }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in summary.expenses %}
+                        <tr>
+                            <td>{{ e.date }}</td>
+                            <td>
+                                <div>{{ e.name }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ e.vendor_name or e.payee or '' }}</div>
+                            </td>
+                            <td class="amount">{{ "{:,.0f}".format(e.amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <p class="text-muted" style="font-size: 0.85rem;">
+        ※この画面にデータを表示するには、経費登録や収入登録の際に、この案件（Job）をリストから選択してください。
+    </p>
+</div>
+{% endblock %}

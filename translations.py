@@ -88,8 +88,42 @@ TRANSLATIONS = {
         "th_method":   "方法",
         "th_amount":   "金額",
         "th_action":   "",
-
         "months": MONTHS_JA,
+
+        # 管理セクション
+        "nav_tasks":       "タスク",
+        "nav_contacts":    "取引先",
+        "nav_info":        "重要情報",
+        "nav_jobs":        "案件利益",
+        "nav_mgmt":        "プロジェクト管理",
+        "nav_accounting":  "経理",
+
+        "task_title":      "タスク管理",
+        "task_add":        "タスク追加",
+        "task_todo":       "未完了",
+        "task_done":       "完了",
+        "task_archived":   "アーカイブ",
+        "task_priority":   "優先度",
+        "task_due":        "期限",
+
+        "contact_title":   "取引先・顧客名簿",
+        "contact_vendor":  "注文先(Vendor)",
+        "contact_customer":"得意先(Customer)",
+        "contact_add":     "連絡先追加",
+
+        "job_title":       "案件別利益管理",
+        "job_add":         "案件追加",
+        "job_active":      "進行中",
+        "job_closed":      "完了済み",
+        "job_profit":      "粗利",
+        "job_cost":        "仕入合計",
+        "job_sales":       "販売合計",
+
+        "info_title":      "プロジェクト重要情報",
+        "info_bank":       "銀行口座・振込情報",
+        "info_facility":   "施設・公共料金情報",
+        "info_emergency":  "緊急連絡先",
+        "info_updated":    "最終更新",
     },
 
     "id": {
@@ -171,6 +205,41 @@ TRANSLATIONS = {
         "th_action":   "",
 
         "months": MONTHS_ID,
+
+        # Manajemen
+        "nav_tasks":       "Tugas",
+        "nav_contacts":    "Kontak",
+        "nav_info":        "Info Penting",
+        "nav_jobs":        "Laba Proyek",
+        "nav_mgmt":        "Manajemen Proyek",
+        "nav_accounting":  "Akuntansi",
+
+        "task_title":      "Manajemen Tugas",
+        "task_add":        "Tambah Tugas",
+        "task_todo":       "Belum Selesai",
+        "task_done":       "Selesai",
+        "task_archived":   "Arsip",
+        "task_priority":   "Prioritas",
+        "task_due":        "Tenggat",
+
+        "contact_title":   "Buku Kontak/Pelanggan",
+        "contact_vendor":  "Pemasok(Vendor)",
+        "contact_customer":"Pelanggan(Customer)",
+        "contact_add":     "Tambah Kontak",
+
+        "job_title":       "Manajemen Laba per Proyek",
+        "job_add":         "Tambah Proyek/Job",
+        "job_active":      "Aktif",
+        "job_closed":      "Selesai",
+        "job_profit":      "Margin Laba",
+        "job_cost":        "Total Modal",
+        "job_sales":       "Total Penjualan",
+
+        "info_title":      "Informasi Penting Proyek",
+        "info_bank":       "Info Bank & Transfer",
+        "info_facility":   "Info Fasilitas & Utilitas",
+        "info_emergency":  "Kontak Darurat",
+        "info_updated":    "Pembaruan Terakhir",
     },
 }
 

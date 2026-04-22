@@ -1,0 +1,146 @@
+{% extends "project/_base.html" %}
+{% block title %}{{ project.name }} — プロジェクト管理{% endblock %}
+
+{% block extra_head %}
+<style>
+  .project-header {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.09);
+    padding: 1.8rem 1.8rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border-top: 6px solid {{ project.color or '#16213e' }};
+  }
+  .project-header-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .project-header .emoji { font-size: 3rem; line-height: 1; }
+  .project-header .name { font-size: 1.7rem; font-weight: 700; color: #16213e; }
+  .project-header .desc { color: #555; line-height: 1.6; margin-top: .3rem; }
+  .project-header-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  .menu-tile {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.09);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .12s, box-shadow .12s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+  }
+  .menu-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.13);
+  }
+  .menu-tile .ico { font-size: 2.2rem; }
+  .menu-tile .lbl { font-weight: 700; color: #16213e; }
+  .menu-tile .sub {
+    font-size: .76rem;
+    color: #888;
+  }
+  .menu-tile.disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .delete-form { display: inline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-header">
+  <div class="project-header-top">
+    <div class="emoji">{{ project.emoji or '📁' }}</div>
+    <div>
+      <div class="name">{{ project.name }}</div>
+      {% if project.description %}
+        <div class="desc">{{ project.description }}</div>
+      {% endif %}
+      {% if project.start_date or project.client_name or project.manager_name %}
+        <div style="margin-top:.6rem; display:flex; gap:1.2rem; flex-wrap:wrap; font-size:.88rem; color:#444;">
+          {% if project.start_date %}<span>📅 開始: <strong>{{ project.start_date }}</strong></span>{% endif %}
+          {% if project.client_name %}<span>🤝 依頼者: <strong>{{ project.client_name }}</strong></span>{% endif %}
+          {% if project.manager_name %}<span>👤 担当: <strong>{{ project.manager_name }}</strong></span>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="project-header-actions">
+    <a href="{{ url_for('project.edit_project', project_id=project.id) }}" class="btn btn-sm btn-edit">✏️ 編集</a>
+    <a href="{{ url_for('project.list_projects') }}" class="btn btn-sm btn-edit">← 一覧へ戻る</a>
+    {% if project.status == 'archived' %}
+      <span class="btn btn-sm" style="background:#c9982e; color:#fff; cursor:default;">📦 アーカイブ済み</span>
+      <form method="post" action="{{ url_for('project.archive', project_id=project.id) }}" class="delete-form">
+        <button type="submit" class="btn btn-sm btn-edit">↩️ アーカイブ解除</button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('project.archive', project_id=project.id) }}" class="delete-form"
+            onsubmit="return confirm('「{{ project.name }}」をアーカイブしますか？\n（一覧から非表示になりますが、データは残ります）');">
+        <button type="submit" class="btn btn-sm" style="background:#6c757d; color:#fff;">📦 アーカイブ</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('project.delete', project_id=project.id) }}" class="delete-form"
+          onsubmit="return confirm('本当に「{{ project.name }}」を削除しますか？\n（この操作は取り消せません）');">
+      <button type="submit" class="btn btn-sm btn-danger">🗑 削除</button>
+    </form>
+  </div>
+</div>
+
+<h2 style="font-size:1.1rem; color:#555; margin-bottom:.8rem;">メニュー</h2>
+<div class="menu-grid">
+  <a href="{{ url_for('web.tasks') }}" class="menu-tile">
+    <div class="ico">✅</div>
+    <div class="lbl">タスク</div>
+    <div class="sub">未着手・進行中・完了・保留・却下</div>
+  </a>
+  <a href="{{ url_for('web.jobs') }}" class="menu-tile">
+    <div class="ico">💎</div>
+    <div class="lbl">案件利益</div>
+    <div class="sub">案件ごとの売上・原価・利益</div>
+  </a>
+  <a href="{{ url_for('web.contacts') }}" class="menu-tile">
+    <div class="ico">👥</div>
+    <div class="lbl">取引先情報</div>
+    <div class="sub">業者・顧客・連絡先</div>
+  </a>
+  <a href="{{ url_for('project.info', project_id=project.id) }}" class="menu-tile">
+    <div class="ico">📄</div>
+    <div class="lbl">重要事項</div>
+    <div class="sub">住所・WiFi・銀行・契約書（添付可）</div>
+  </a>
+
+  <a href="{{ url_for('project.staff_list', project_id=project.id) }}" class="menu-tile">
+    <div class="ico">🧑‍💼</div>
+    <div class="lbl">スタッフ</div>
+    <div class="sub">雇用情報・契約書・連絡先</div>
+  </a>
+  <a href="{{ url_for('web.job_dashboard') }}" class="menu-tile">
+    <div class="ico">💰</div>
+    <div class="lbl">経理ダッシュボード</div>
+    <div class="sub">月次収支・経費・売上</div>
+  </a>
+  <div class="menu-tile disabled" title="Phase 5 で実装予定">
+    <div class="ico">🔗</div>
+    <div class="lbl">共有リンク</div>
+    <div class="sub">投資家向け閲覧</div>
+  </div>
+</div>
+{% endblock %}

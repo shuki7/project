@@ -1,0 +1,17 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerEnabled On
+PassengerAppRoot "/home/ordp5944/public_html/shuki.link/keiri"
+PassengerBaseURI "/keiri"
+PassengerPython "/home/ordp5944/virtualenv/public_html/shuki.link/keiri/3.9/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+Options -Indexes
+RewriteEngine On
+RewriteBase /keiri/
+
+# We REMOVE the RewriteRule to let Passenger handle URI-based routing automatically.
+# This prevents LiteSpeed from trying to serve the passenger_wsgi.py file as a static download.
+
+<FilesMatch "\.(db|db-wal|db-shm|env|json|key|pem)$">
+    Require all denied
+</FilesMatch>

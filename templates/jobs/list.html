@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ T.job_title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💎 {{ T.job_title }}</h1>
+    <button onclick="document.getElementById('jobModal').style.display='flex'" class="btn btn-primary">＋ {{ T.job_add }}</button>
+</div>
+
+<div class="filter-bar">
+    <a href="{{ url_for('web.jobs') }}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-edit{% endif %}">すべて</a>
+    <a href="{{ url_for('web.jobs', status='active') }}" class="btn btn-sm {% if status_filter == 'active' %}btn-primary{% else %}btn-edit{% endif %}">{{ T.job_active }}</a>
+    <a href="{{ url_for('web.jobs', status='closed') }}" class="btn btn-sm {% if status_filter == 'closed' %}btn-primary{% else %}btn-edit{% endif %}">{{ T.job_closed }}</a>
+</div>
+
+<div class="card">
+    {% if not jobs %}
+    <p class="text-muted" style="text-align: center; padding: 2rem;">案件データがありません</p>
+    {% else %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ステータス</th>
+                    <th>開始日</th>
+                    <th>案件名</th>
+                    <th style="width: 120px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in jobs %}
+                <tr>
+                    <td>
+                        <span class="btn-sm" style="font-size: 0.75rem; border-radius: 4px; 
+                            {% if j.status == 'active' %}background: #d8f3dc; color: #1b4332;{% else %}background: #e9ecef; color: #444;{% endif %}">
+                            {{ '進行中' if j.status == 'active' else '完了' }}
+                        </span>
+                    </td>
+                    <td class="text-muted">{{ j.start_date or '--' }}</td>
+                    <td style="font-weight: 600; font-size: 1.05rem;">
+                        <a href="{{ url_for('web.job_detail', id=j.id) }}" style="text-decoration: none; color: #16213e;">
+                            {{ j.name }} <span style="font-weight: normal; margin-left: 0.5rem; font-size: 0.8rem;">→ 詳細・利益を見る</span>
+                        </a>
+                    </td>
+                    <td class="actions">
+                        <div style="display: flex; gap: 0.3rem;">
+                            <button onclick='editJob({{ j|tojson }})' class="btn btn-sm btn-edit">編集</button>
+                            <form action="{{ url_for('web.jobs_delete', id=j.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('案件を削除しますか？紐付いた経費・収入は消えませんが、紐付けが解除されます。')">
+                                <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 登録・編集モーダル -->
+<div id="jobModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding: 1rem;">
+    <div class="card" style="width:100%; max-width:450px; margin:0;">
+        <h2 id="modalTitle" class="card-title">{{ T.job_add }}</h2>
+        <form method="POST">
+            <input type="hidden" id="jobId" name="id">
+            <div class="form-group">
+                <label>案件タイトル</label>
+                <input type="text" name="name" id="jobName" required placeholder="例: ヴィラ・アネックス トイレ修理">
+            </div>
+            <div class="form-group">
+                <label>開始日</label>
+                <input type="date" name="start_date" id="jobDate">
+            </div>
+            <div class="form-group">
+                <label>ステータス</label>
+                <select name="status" id="jobStatus">
+                    <option value="active">進行中 (Active)</option>
+                    <option value="closed">完了済み (Closed)</option>
+                </select>
+            </div>
+            
+            <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">保存</button>
+                <button type="button" onclick="closeJobModal()" class="btn btn-edit" style="flex:1;">キャンセル</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function editJob(j) {
+    document.getElementById('modalTitle').innerText = '案件を編集';
+    document.getElementById('jobId').value = j.id;
+    document.getElementById('jobName').value = j.name;
+    document.getElementById('jobDate').value = j.start_date || '';
+    document.getElementById('jobStatus').value = j.status;
+    document.getElementById('jobModal').style.display = 'flex';
+}
+
+function closeJobModal() {
+    document.getElementById('jobModal').style.display = 'none';
+    document.getElementById('jobId').value = '';
+    document.getElementById('modalTitle').innerText = '{{ T.job_add }}';
+}
+</script>
+{% endblock %}
+
+{% endblock %}

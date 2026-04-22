@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ T.info_title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📄 {{ T.info_title }}</h1>
+    <span class="text-muted" style="font-size: 0.8rem;">{{ T.info_updated }}: {{ info.updated_at or '--' }}</span>
+</div>
+
+<form method="POST">
+    <div class="grid-3" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+        <!-- 銀行・振込情報 -->
+        <div class="card">
+            <h2 class="card-title" style="color: #16213e; border-bottom: 2px solid #e2c97e; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                🏦 {{ T.info_bank }}
+            </h2>
+            <div class="form-group">
+                <textarea name="bank_info" style="min-height: 250px; font-family: monospace; font-size: 0.9rem;" placeholder="SWIFTコード、銀行名、支店、名義、口座番号など、振込に必要な情報をここにまとめます...">{{ info.bank_info or '' }}</textarea>
+            </div>
+            <p class="text-muted" style="font-size: 0.8rem;">※パートナーや取引先に送付するテキストとしてそのままコピーできるようにしておくと便利です。</p>
+        </div>
+
+        <!-- 施設・公共料金情報 -->
+        <div class="card">
+            <h2 class="card-title" style="color: #16213e; border-bottom: 2px solid #e2c97e; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                🏠 {{ T.info_facility }}
+            </h2>
+            <div class="form-group">
+                <textarea name="facility_info" style="min-height: 250px; font-size: 0.9rem;" placeholder="施設の詳細住所、Google Mapsリンク、電気・水道の契約番号、周辺施設情報など...">{{ info.facility_info or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- 緊急連絡先 -->
+        <div class="card">
+            <h2 class="card-title" style="color: #16213e; border-bottom: 2px solid #e2c97e; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                ⚠️ {{ T.info_emergency }}
+            </h2>
+            <div class="form-group">
+                <textarea name="emergency_info" style="min-height: 250px; font-size: 0.9rem;" placeholder="病院、オーナー、地元の警察、配管工、電気技師などの連絡先をここにまとめます...">{{ info.emergency_info or '' }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <button type="submit" class="btn btn-success" style="padding: 0.8rem 3rem; font-size: 1rem;">
+            💾 上記の情報をすべて保存する
+        </button>
+    </div>
+</form>
+{% endblock %}

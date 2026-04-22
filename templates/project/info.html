@@ -1,0 +1,279 @@
+{% extends "project/_base.html" %}
+{% block title %}{{ project.name }} — プロジェクト情報{% endblock %}
+
+{% block extra_head %}
+<style>
+  .project-mini {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: .8rem 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    border-left: 5px solid {{ project.color or '#16213e' }};
+  }
+  .project-mini .emoji { font-size: 1.6rem; }
+  .project-mini .name { font-weight: 700; color: #16213e; font-size: 1.05rem; }
+
+  .cat-section {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .cat-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .85rem 1.1rem;
+    background: linear-gradient(180deg, #f7f9fc, #eef1f6);
+    border-bottom: 1px solid #e3e7ee;
+  }
+  .cat-head .label { font-weight: 700; color: #16213e; font-size: 1rem; }
+  .cat-head .add-btn {
+    font-size: .78rem;
+    padding: .3rem .65rem;
+    background: #2d6a4f;
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .cat-head .add-btn:hover { opacity: .9; }
+
+  .cat-body { padding: .65rem 1.1rem 1rem; }
+  .empty { color: #aaa; font-size: .82rem; padding: .6rem 0; text-align: center; }
+
+  .item {
+    border: 1px solid #e7eaf0;
+    border-radius: 8px;
+    padding: .7rem .9rem;
+    margin-top: .55rem;
+    background: #fafbfc;
+  }
+  .item:first-child { margin-top: 0; }
+  .item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .35rem;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+  .item-head .item-label {
+    font-weight: 700;
+    color: #16213e;
+    font-size: .92rem;
+  }
+  .item-actions { display: flex; gap: .35rem; }
+  .item-actions a, .item-actions button {
+    font-size: .72rem;
+    padding: .2rem .55rem;
+    border-radius: 4px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    background: #e9ecef;
+    color: #333;
+  }
+  .item-actions .del { background: #f8d7da; color: #721c24; }
+  .item-actions form { display: inline; margin: 0; }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .35rem .85rem;
+    font-size: .82rem;
+  }
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.35;
+  }
+  .field-row .k { color: #888; font-size: .7rem; font-weight: 600; }
+  .field-row .v { color: #1a1a2e; word-break: break-all; }
+  .field-row .v.empty-v { color: #ccc; }
+  .field-row.password .v { font-family: monospace; background: #f0f3f8; padding: 1px 4px; border-radius: 3px; }
+
+  .attachments {
+    margin-top: .55rem;
+    padding-top: .5rem;
+    border-top: 1px dashed #d8dde6;
+  }
+  .att-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .25rem 0;
+    font-size: .8rem;
+    gap: .5rem;
+  }
+  .att-row a { color: #0d3b8c; text-decoration: none; }
+  .att-row a:hover { text-decoration: underline; }
+  .att-row .del-att {
+    background: none;
+    border: none;
+    color: #c1121f;
+    font-size: .72rem;
+    cursor: pointer;
+    padding: .15rem .35rem;
+  }
+
+  .upload-area {
+    margin-top: 1rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    padding: 1rem 1.1rem;
+  }
+  .upload-area h3 { font-size: .92rem; color: #555; margin-bottom: .55rem; }
+  .upload-area form {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .upload-area input[type="file"] {
+    padding: .35rem;
+    border: 1.5px solid #dde1ea;
+    border-radius: 5px;
+    font-size: .85rem;
+    background: #fff;
+    flex: 1;
+    min-width: 200px;
+  }
+  .upload-area select, .upload-area input[type="text"] {
+    padding: .35rem .5rem;
+    border: 1.5px solid #dde1ea;
+    border-radius: 5px;
+    font-size: .85rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-mini">
+  <div class="emoji">{{ project.emoji or '📁' }}</div>
+  <div>
+    <div class="name">{{ project.name }}</div>
+    <div style="font-size:.78rem; color:#888;">
+      <a href="{{ url_for('project.detail', project_id=project.id) }}" style="color:#888;">← プロジェクト詳細</a>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1>📋 プロジェクト情報</h1>
+</div>
+
+{% for cat_key, cat_label, cat_fields in categories %}
+  <div class="cat-section">
+    <div class="cat-head">
+      <div class="label">{{ cat_label }}
+        <span style="color:#888; font-weight:400; font-size:.8rem;">
+          （{{ grouped[cat_key]|length }}件）
+        </span>
+      </div>
+      <a href="{{ url_for('project.info_item_new', project_id=project.id, category=cat_key) }}" class="add-btn">＋ 追加</a>
+    </div>
+    <div class="cat-body">
+      {% for it in grouped[cat_key] %}
+        <div class="item">
+          <div class="item-head">
+            <div class="item-label">{{ it.label or '(無題)' }}</div>
+            <div class="item-actions">
+              <a href="{{ url_for('project.info_item_edit', project_id=project.id, item_id=it.id) }}">編集</a>
+              <form method="post" action="{{ url_for('project.info_item_delete', project_id=project.id, item_id=it.id) }}"
+                    onsubmit="return confirm('この項目を削除しますか？関連添付も削除されます。');">
+                <button type="submit" class="del">削除</button>
+              </form>
+            </div>
+          </div>
+          <div class="field-grid">
+            {% for fkey in cat_fields %}
+              <div class="field-row {% if fkey == 'password' %}password{% endif %}">
+                <span class="k">{{ field_labels.get(fkey, fkey) }}</span>
+                <span class="v {% if not it.fields.get(fkey) %}empty-v{% endif %}">
+                  {{ it.fields.get(fkey) or '—' }}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+          {% if atts_by_item.get(it.id) %}
+            <div class="attachments">
+              {% for a in atts_by_item.get(it.id, []) %}
+                <div class="att-row">
+                  <span>📎
+                    {% if a.drive_url %}
+                      <a href="{{ a.drive_url }}" target="_blank">{{ a.filename }}</a>
+                    {% else %}
+                      {{ a.filename }}
+                    {% endif %}
+                    {% if a.notes %}<span style="color:#888;">— {{ a.notes }}</span>{% endif %}
+                  </span>
+                  <form method="post" action="{{ url_for('project.info_attachment_delete', project_id=project.id, att_id=a.id) }}"
+                        onsubmit="return confirm('この添付を削除しますか？（Drive 上のファイルも削除されます）');">
+                    <button type="submit" class="del-att">削除</button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty">— 未登録 —</div>
+      {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+
+<div class="upload-area">
+  <h3>📤 ファイルアップロード（Google Drive）</h3>
+  <form method="post" action="{{ url_for('project.info_attachment_upload', project_id=project.id) }}"
+        enctype="multipart/form-data">
+    <input type="file" name="file" required>
+    <select name="category">
+      <option value="contract">契約書</option>
+      <option value="document" selected>書類</option>
+      <option value="photo">写真</option>
+      <option value="other">その他</option>
+    </select>
+    <input type="text" name="notes" placeholder="メモ（任意）">
+    <button type="submit" class="btn btn-primary btn-sm">アップロード</button>
+  </form>
+  <div style="font-size:.72rem; color:#888; margin-top:.5rem;">
+    ※ Drive の <code>projects/{{ project.name }}/info/</code> フォルダに保存されます。
+  </div>
+</div>
+
+{% set unattached = atts_by_item.get('_unattached', []) %}
+{% if unattached %}
+  <div class="cat-section" style="margin-top:1rem;">
+    <div class="cat-head">
+      <div class="label">📎 未紐付け添付ファイル
+        <span style="color:#888; font-weight:400; font-size:.8rem;">（{{ unattached|length }}件）</span>
+      </div>
+    </div>
+    <div class="cat-body">
+      {% for a in unattached %}
+        <div class="att-row">
+          <span>
+            {% if a.drive_url %}
+              <a href="{{ a.drive_url }}" target="_blank">{{ a.filename }}</a>
+            {% else %}{{ a.filename }}{% endif %}
+            <span style="color:#888; font-size:.75rem;">[{{ a.category }}]</span>
+            {% if a.notes %}<span style="color:#888;">— {{ a.notes }}</span>{% endif %}
+          </span>
+          <form method="post" action="{{ url_for('project.info_attachment_delete', project_id=project.id, att_id=a.id) }}"
+                onsubmit="return confirm('この添付を削除しますか？');">
+            <button type="submit" class="del-att">削除</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

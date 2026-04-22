@@ -1,10 +1,18 @@
-import sys # reload 2
+import sys
 import os
 from pathlib import Path
 
 # ── LiteSpeed/Passenger環境でUTF-8エンコーディングを強制 ──
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 os.environ.setdefault("PYTHONUTF8", "1")
+
+# ── デバッグ用ログ ──
+try:
+    with open("debug_wsgi.log", "a") as f:
+        import datetime
+        f.write(f"[{datetime.datetime.now()}] WSGI Starting...\n")
+except:
+    pass
 
 # プロジェクトルートをパスに追加
 _here = Path(__file__).parent
@@ -19,11 +27,6 @@ for m in list(sys.modules.keys()):
 from app import application as _flask_app  # noqa: E402
 
 def application(environ, start_response):
-    """Passengerが PassengerBaseURI=/keiri により PATH_INFO から /keiri を
-    剥がすため、Flask Blueprint(url_prefix='/keiri')と整合するよう PATH_INFO に
-    /keiri を復元する。SCRIPT_NAME は空にして url_for() の二重プレフィックスを回避。"""
-    path = environ.get("PATH_INFO", "") or ""
-    if not path.startswith("/keiri"):
-        environ["PATH_INFO"] = "/keiri" + path
-    environ["SCRIPT_NAME"] = ""
+    """/project プレフィックスをWSGIに伝えてurl_for()が正しいURLを生成するようにする。"""
+    environ["SCRIPT_NAME"] = "/project"
     return _flask_app(environ, start_response)

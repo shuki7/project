@@ -30,9 +30,46 @@
     </div>
 
     <div class="form-group">
-      <label for="student_name">生徒名</label>
+      <label for="contact_id">得意先（Customer）</label>
+      <select id="contact_id" name="contact_id">
+        <option value="">（未選択）</option>
+        {% for c in contacts %}
+          <option value="{{ c.id }}" {% if revenue.get('contact_id') == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="category_id">売上カテゴリ</label>
+      <select id="category_id" name="category_id">
+        <option value="">（未選択）</option>
+        {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if revenue.get('category_id') == cat.id %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="student_name">生徒名 / その他名称</label>
       <input type="text" id="student_name" name="student_name"
              value="{{ revenue.get('student_name', '') }}" placeholder="例: 田中 太郎">
+    </div>
+
+    <div class="form-group">
+      <label for="job_id">関連案件（Job）</label>
+      <select id="job_id" name="job_id">
+        <option value="">（未選択）</option>
+        {% for j in jobs %}
+          <option value="{{ j.id }}" {% if revenue.get('job_id') == j.id %}selected{% endif %}>
+            {{ j.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">※特定の修理案件やコンサル料としての売上を集計する場合に選択します</small>
     </div>
 
     <div class="form-group">
@@ -41,21 +78,30 @@
     </div>
 
     <div class="form-group">
-      <label for="receipt">振込明細・領収書の画像</label>
-      <input type="file" id="receipt" name="receipt" accept="image/*">
-      {% if revenue.get('receipt_path') %}
+      <label for="receipt">請求書PDF・入金スクショ・領収書 (最大5枚)</label>
+      <input type="file" id="receipt" name="receipt" accept="image/*,application/pdf" multiple>
+      <small class="text-muted">※最大5枚までアップロード可能です。新しい選択で既存の添付は置き換わります。</small>
+      
+      {% set paths = (revenue.get('receipt_path') or '') | from_json %}
+      {% if paths %}
         <div class="mt-1">
-          <p class="text-muted">現在の画像：</p>
-          {% if revenue.receipt_path.startswith('gdrive:') %}
-            <a href="https://drive.google.com/file/d/{{ revenue.receipt_path[7:] }}/view"
-               target="_blank" class="btn btn-edit btn-sm">📎 Drive で開く</a>
-          {% else %}
-            <a href="{{ url_for('web.serve_receipt', filename=revenue.receipt_path) }}" target="_blank">
-              <img src="{{ url_for('web.serve_receipt', filename=revenue.receipt_path) }}"
-                   alt="レシート" class="receipt-thumb" style="width:80px; height:80px;">
-            </a>
-          {% endif %}
-          <p class="text-muted mt-1">新しいファイルを選択すると置き換わります。</p>
+          <p class="text-muted">現在の添付：</p>
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+            {% for p in paths %}
+              {% if p.startswith('gdrive:') %}
+                <a href="https://drive.google.com/file/d/{{ p[7:] }}/view" target="_blank"
+                   class="btn btn-edit btn-sm" style="display:flex; align-items:center; justify-content:center; width:70px; height:70px; font-size:.7rem; padding:0;">
+                  📎 Drive
+                </a>
+              {% else %}
+                <a href="{{ url_for('web.serve_receipt', filename=p) }}" target="_blank">
+                  <img src="{{ url_for('web.serve_receipt', filename=p) }}"
+                       alt="添付" class="receipt-thumb" style="width:70px; height:70px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">
+                </a>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <p class="text-muted mt-1" style="font-size:.8rem;">新しいファイルを選択すると既存のものは置き換わります。</p>
         </div>
       {% endif %}
     </div>

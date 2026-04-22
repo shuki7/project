@@ -21,6 +21,7 @@ BASE_DIR = (
 )
 
 DB_PATH        = BASE_DIR / "kakeibo.db"
+PROJECTS_FILE  = BASE_DIR / "projects.json"
 RECEIPTS_DIR   = BASE_DIR / "receipts"
 OBSIDIAN_DIR   = BASE_DIR / "Obsidian"
 REPORTS_DIR    = BASE_DIR / "reports"
@@ -49,10 +50,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "")
 GDRIVE_CREDENTIALS_PATH = Path(__file__).parent / "credentials.json"
 GDRIVE_TOKEN_PATH       = Path(__file__).parent / "token.json"
+# サーバー向け: サービスアカウント JSON のパス（.env 相対 or 絶対）
+_sa = os.getenv("GDRIVE_SERVICE_ACCOUNT", "")
+GDRIVE_SERVICE_ACCOUNT_PATH = (
+    Path(_sa) if _sa and Path(_sa).is_absolute()
+    else (Path(__file__).parent / _sa) if _sa
+    else None
+)
 
 # ── 認証 ──────────────────────────────────────────────────────
-LOGIN_EMAIL    = os.getenv("LOGIN_EMAIL", "")
-LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "keiri2026")
+LOGIN_EMAIL    = os.getenv("LOGIN_EMAIL", "uemurashuki@gmail.com")
+LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "Enrichno1@")
 LOGIN_RESET_TOKEN = os.getenv("LOGIN_RESET_TOKEN", "")
 
 # ── コース設定（人数カウント用キーワード）────────────────────────
@@ -62,7 +70,7 @@ COURSE_KEYWORDS = {
 }
 
 # ── 会社情報 ──────────────────────────────────────────────────
-COMPANY_NAME    = "PT BALI JAPAN DREAM"
+COMPANY_NAME    = "SSP PROJECT"
 COMPANY_CAPITAL = 940_000_000  # IDR
 
 # ── 通貨 ──────────────────────────────────────────────────────

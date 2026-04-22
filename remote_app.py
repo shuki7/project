@@ -19,11 +19,9 @@ from telegram.ext import Application
 
 # ボットのハンドラーを登録するモジュール
 from bot.webhook_handlers import register_handlers
-import config
-from config import TELEGRAM_TOKEN, DB_PATH
+from config import TELEGRAM_TOKEN
 from core.database import init_db
 from web_app import web
-from project_app import project_bp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,13 +33,13 @@ logger = logging.getLogger(__name__)
 
 flask_app = Flask(__name__)
 flask_app.secret_key = os.getenv("SECRET_KEY", "keiri-secret-2026")
+flask_app.config['TEMPLATES_AUTO_RELOAD'] = True  # テンプレート変更を即反映
 flask_app.register_blueprint(web)
-flask_app.register_blueprint(project_bp)
 # cPanel Passenger が要求する WSGI callable
 application = flask_app
 
 try:
-    init_db(DB_PATH)
+    init_db()
 except Exception as e:
     logger.error(f"Database initialization failed: {e}")
 
@@ -95,8 +93,3 @@ def health():
 
 if __name__ == "__main__":
     flask_app.run(host="0.0.0.0", port=8000, debug=True)
-# reload 1
-
-# Force Restart Sat Apr 18 15:45:25 WITA 2026
-
-# Restart Sat Apr 18 16:12:57 WITA 2026

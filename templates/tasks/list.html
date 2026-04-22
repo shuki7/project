@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ T.task_title }} — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>✅ {{ T.task_title }}</h1>
+    <div>
+        {% if archived %}
+        <a href="{{ url_for('web.tasks') }}" class="btn btn-edit">未完了のみ表示</a>
+        {% else %}
+        <a href="{{ url_for('web.tasks', archived=1) }}" class="btn btn-edit">アーカイブを表示</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-3" style="grid-template-columns: 1fr 2fr; align-items: start;">
+    <!-- 新規追加フォーム -->
+    <div class="card">
+        <h2 class="card-title">{{ T.task_add }}</h2>
+        <form method="POST">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group">
+                <label>{{ T.th_name }}</label>
+                <input type="text" name="title" required placeholder="例: レストランの電気代支払い">
+            </div>
+            <div class="form-group">
+                <label>詳細</label>
+                <textarea name="description" placeholder="詳しい内容など"></textarea>
+            </div>
+            <div class="grid-3" style="gap: 0.5rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label>{{ T.task_priority }}</label>
+                    <select name="priority">
+                        <option value="low">低</option>
+                        <option value="middle" selected>中</option>
+                        <option value="high">高</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>{{ T.task_due }}</label>
+                    <input type="date" name="due_date">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">追加する</button>
+        </form>
+    </div>
+
+    <!-- タスク一覧 -->
+    <div class="card">
+        {% if not tasks %}
+        <p class="text-muted" style="text-align: center; padding: 2rem;">タスクはありません</p>
+        {% else %}
+        <div class="table-wrap">
+            <table style="font-size: 0.95rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>{{ T.th_name }}</th>
+                        <th style="width: 80px;">{{ T.task_priority }}</th>
+                        <th style="width: 100px;">{{ T.task_due }}</th>
+                        <th style="width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tasks %}
+                    <tr style="{% if t.status == 'done' %}opacity: 0.6;{% endif %}">
+                        <td>
+                            <form method="POST" style="margin: 0;">
+                                <input type="hidden" name="action" value="update">
+                                <input type="hidden" name="id" value="{{ t.id }}">
+                                <input type="hidden" name="title" value="{{ t.title }}">
+                                <input type="hidden" name="description" value="{{ t.description }}">
+                                <input type="hidden" name="priority" value="{{ t.priority }}">
+                                <input type="hidden" name="due_date" value="{{ t.due_date }}">
+                                <input type="hidden" name="is_archived" value="{{ t.is_archived }}">
+                                
+                                {% if t.status == 'todo' %}
+                                <input type="hidden" name="status" value="done">
+                                <button type="submit" class="btn btn-sm btn-edit" title="完了にする">◯</button>
+                                {% else %}
+                                <input type="hidden" name="status" value="todo">
+                                <button type="submit" class="btn btn-sm btn-success" title="未完了に戻す">✓</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; {% if t.status == 'done' %}text-decoration: line-through;{% endif %}">
+                                {{ t.title }}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.82rem;">{{ t.description or '' }}</div>
+                        </td>
+                        <td>
+                            <span class="btn-sm" style="font-size: 0.75rem; border-radius: 4px; padding: 2px 6px; 
+                                {% if t.priority == 'high' %}background: #ffe5e5; color: #c1121f;
+                                {% elif t.priority == 'middle' %}background: #e9ecef; color: #444;
+                                {% else %}background: #f0f2f5; color: #888;{% endif %}">
+                                {{ '高' if t.priority == 'high' else '中' if t.priority == 'middle' else '低' }}
+                            </span>
+                        </td>
+                        <td class="text-muted" style="font-size: 0.85rem;">
+                            {{ t.due_date if t.due_date else '--' }}
+                        </td>
+                        <td class="actions">
+                            <div style="display: flex; gap: 0.25rem;">
+                                {% if t.status == 'done' and not t.is_archived %}
+                                <form method="POST" style="margin: 0;">
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="id" value="{{ t.id }}">
+                                    <input type="hidden" name="title" value="{{ t.title }}">
+                                    <input type="hidden" name="description" value="{{ t.description }}">
+                                    <input type="hidden" name="status" value="{{ t.status }}">
+                                    <input type="hidden" name="priority" value="{{ t.priority }}">
+                                    <input type="hidden" name="due_date" value="{{ t.due_date }}">
+                                    <input type="hidden" name="is_archived" value="1">
+                                    <button type="submit" class="btn btn-sm btn-edit" title="アーカイブ">📦</button>
+                                </form>
+                                {% endif %}
+                                <form action="{{ url_for('web.tasks_delete', id=t.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('本当に削除しますか？')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="削除">🗑️</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
