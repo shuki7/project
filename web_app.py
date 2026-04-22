@@ -1466,7 +1466,10 @@ def links():
 @web.route("/gallery", methods=["GET", "POST"])
 def gallery():
     """プロジェクトのギャラリー（写真）を管理する。"""
-    from core.database import get_project_attachments, insert_project_attachment, delete_project_attachment
+    from core.database import (
+        get_project_attachments, get_project_attachment,
+        insert_project_attachment, delete_project_attachment
+    )
     from sync.gdrive import upload_project_file_bytes, delete_drive_file
     import uuid
 
@@ -1474,9 +1477,11 @@ def gallery():
         action = request.form.get("action")
         if action == "delete":
             att_id = request.form.get("id")
-            att = get_project_attachment(att_id) if "get_project_attachment" in locals() else None # Need to import it
-            # I'll just use delete directly
+            att = get_project_attachment(att_id)
+            # 実際には Drive からも消すべきだが、まずは DB から
             delete_project_attachment(att_id)
+            if att and att.get("drive_file_id"):
+                delete_drive_file(att["drive_file_id"])
             flash("写真を削除しました", "success")
         else:
             file = request.files.get("photo")

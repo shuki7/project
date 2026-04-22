@@ -5,6 +5,7 @@ kakeibo.db はGoogle Driveの同期フォルダ内に保存される。
 
 import sqlite3
 import uuid
+import json
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
