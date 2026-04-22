@@ -157,6 +157,43 @@ def health():
 # Passenger が要求する WSGI callable
 application = flask_app
 
+# 【緊急修理】バリジャパンドリーム以外のプロジェクトのDBを分離する（一度だけ実行）
+try:
+    import sqlite3
+    import json
+    import uuid
+    from core.database import SCHEMA_SQL
+    
+    if PROJECTS_FILE.exists():
+        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+            projs = json.load(f)
+        
+        repaired = False
+        for p in projs:
+            # バリジャパンドリーム以外で、かつ kakeibo.db を見ているものを救出
+            if ("BALI JAPAN DREAM" not in p["name"]) and (p["id"] != "bali0001") and (p.get("db") == "kakeibo.db"):
+                new_id_part = str(uuid.uuid4())[:8]
+                new_db_name = f"kakeibo_iso_{new_id_part}.db"
+                p["db"] = new_db_name
+                p["is_group"] = True
+                
+                # 新規DB作成と初期化
+                new_db_p = PROJECTS_FILE.parent / new_db_name
+                with sqlite3.connect(new_db_p) as conn:
+                    conn.executescript(SCHEMA_SQL)
+                    conn.execute(
+                        "INSERT INTO projects (id, name, emoji, color, is_group) VALUES (1, ?, ?, ?, 1)",
+                        (p["name"], p.get("emoji", "📁"), p.get("color", "#3b82f6"))
+                    )
+                repaired = True
+        
+        if repaired:
+            with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+                json.dump(projs, f, ensure_ascii=False, indent=4)
+except Exception as e:
+    pass # 失敗しても起動を優先
+
+
 
 # ── ローカル開発用 ─────────────────────────────────────────
 if __name__ == "__main__":
