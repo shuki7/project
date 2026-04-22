@@ -23,20 +23,27 @@ for m in list(sys.modules.keys()):
                             "translations", "config", "reports", "bot"]):
         del sys.modules[m]
 
-from main import application as _flask_app  # noqa: E402
-
-
-def application(environ, start_response):
-    try:
-        # PATH_INFO 調整
-        path = environ.get("PATH_INFO", "") or ""
-        if path.startswith("/project"):
-            environ["PATH_INFO"] = path[len("/project"):] or "/"
-        environ["SCRIPT_NAME"] = "/project"
-        return _flask_app(environ, start_response)
-    except Exception:
-        import traceback
+try:
+    from main import application as _flask_app  # noqa: E402
+except Exception:
+    import traceback
+    def application(environ, start_response):
         status = "500 Internal Server Error"
         response_headers = [("Content-type", "text/plain; charset=utf-8")]
         start_response(status, response_headers)
         return [traceback.format_exc().encode("utf-8")]
+else:
+    def application(environ, start_response):
+        try:
+            # PATH_INFO 調整
+            path = environ.get("PATH_INFO", "") or ""
+            if path.startswith("/project"):
+                environ["PATH_INFO"] = path[len("/project"):] or "/"
+            environ["SCRIPT_NAME"] = "/project"
+            return _flask_app(environ, start_response)
+        except Exception:
+            import traceback
+            status = "500 Internal Server Error"
+            response_headers = [("Content-type", "text/plain; charset=utf-8")]
+            start_response(status, response_headers)
+            return [traceback.format_exc().encode("utf-8")]

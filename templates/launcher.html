@@ -193,50 +193,23 @@
 {% endblock %}
 
 {% block content %}
-<div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 100;">
-    <a href="{{ url_for('project.url_list') }}" class="nav-link" style="color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s;">
-        🔗 {{ T.nav_urls }}
-    </a>
-</div>
-
 <div class="launcher-header">
-    {% if parent %}
-        <div style="margin-bottom: 1rem;">
-            <a href="{{ url_for('web.launcher') }}" style="color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.9rem;">
-                ← マスタープロジェクト一覧に戻る
-            </a>
-        </div>
-        <h1>{{ parent.emoji }} {{ parent.name }}</h1>
-        <p>「取引相手」を選択してください</p>
-    {% else %}
-        <h1>SSP PROJECT</h1>
-        <p>管理するワークスペースを選択してください</p>
-    {% endif %}
+    <h1>SSP PROJECT</h1>
+    <p>管理するプロジェクトを選択してください</p>
 </div>
 
 <div class="project-grid">
     {% for p in projects %}
     <div style="position: relative;">
-        <!-- 共有ボタン（子プロジェクトのみ、または常に表示？） -->
-        <button type="button" class="share-btn" title="共有管理" onclick="openShareModal('{{ p.id }}', '{{ p.name }}', {{ (p.shares or []) | tojson }})">
-            🔗
-        </button>
-
-        {% if p.is_group or p.id in parent_ids %}
-            {# マスタープロジェクト（グループ）の場合はランチャーをドリルダウン #}
-            <a href="{{ url_for('web.launcher', parent_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
-                <div class="project-emoji">{{ p.emoji }}</div>
-                <div class="project-name">{{ p.name }}</div>
-                <div class="project-status" style="background: rgba(226, 201, 126, 0.2); color: #e2c97e;">Group</div>
-            </a>
-        {% else %}
-            {# 通常のプロジェクト/パートナーの場合はワークスペースに入る #}
-            <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
-                <div class="project-emoji">{{ p.emoji }}</div>
-                <div class="project-name">{{ p.name }}</div>
-                <div class="project-status">Active</div>
-            </a>
-        {% endif %}
+        {# マスタープロジェクト（kakeibo.dbを使用）かパートナープロジェクトかに関わらず select_project へ #}
+        {# select_project 内部でマスターなら詳細画面、パートナーなら個別ホームへ振り分けます #}
+        <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
+            <div class="project-emoji">{{ p.emoji }}</div>
+            <div class="project-name">{{ p.name }}</div>
+            <div class="project-status">
+                {% if p.db == 'kakeibo.db' %}Master{% else %}Active{% endif %}
+            </div>
+        </a>
     </div>
     {% endfor %}
 
