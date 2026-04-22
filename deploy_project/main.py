@@ -113,7 +113,9 @@ def _auto_select_kakeibo_workspace():
 
 @flask_app.route("/")
 def index():
-    return "DB and project_bp are working! web_app is commented out."
+    if not session.get("logged_in"):
+        return redirect("/project/keiri/login")
+    return redirect("/project/keiri/launcher")
 
 
 try:
