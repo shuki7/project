@@ -293,6 +293,41 @@ def add_project():
     return redirect(url_for("web.launcher", parent_id=parent_id))
 
 
+@web.route("/projects/<project_id>/delete", methods=["POST"])
+def delete_project_workspace(project_id):
+    if project_id == "1":
+        flash("マスタープロジェクトは削除できません。", "error")
+        return redirect(url_for("web.launcher"))
+        
+    projects = _load_projects()
+    project = next((p for p in projects if p["id"] == project_id), None)
+    if not project:
+        flash("プロジェクトが見つかりません。", "error")
+        return redirect(url_for("web.launcher"))
+    
+    children = [p for p in projects if p.get("parent_id") == project_id]
+    if children:
+        flash("取引相手が含まれるグループは削除できません。先に取引相手を削除してください。", "error")
+        return redirect(url_for("web.launcher"))
+
+    projects.remove(project)
+    _save_projects(projects)
+    
+    db_name = project.get("db")
+    if db_name and db_name != "kakeibo.db":
+        db_path = PROJECTS_FILE.parent / db_name
+        try:
+            if db_path.exists():
+                db_path.unlink()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"failed to delete DB {db_path}: {e}")
+
+    flash(f"プロジェクト「{project['name']}」を削除しました。", "success")
+    return redirect(url_for("web.launcher", parent_id=project.get("parent_id")))
+
+
+
 @web.route("/share/<token>")
 def shared_access(token):
     """トークンによる閲覧専用アクセスを許可する。"""
