@@ -30,7 +30,8 @@ def application(environ, start_response):
         return list(result)
 
     except BaseException:
-        status = "500 Internal Server Error"
+        # 意図的に 200 OK を返すことで、LiteSpeed のカスタムエラー画面を回避してTracebackを表示させる
+        status = "200 OK"
         response_headers = [("Content-type", "text/plain; charset=utf-8")]
         start_response(status, response_headers)
         
