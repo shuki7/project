@@ -71,32 +71,12 @@ DEFAULT_WORKSPACE_NAME  = "🇮🇩BALI 🇯🇵JAPAN 🌎️DREAM"
 DEFAULT_WORKSPACE_EMOJI = ""   # 名前自体に絵文字を含むので別途絵文字なし
 
 def _ensure_kakeibo_workspace():
-    """projects.json に default ワークスペース（kakeibo.db 指し）を保証する。
-    既存の default エントリは表示名を最新仕様に揃える。"""
+    """DBの projects テーブルにある全プロジェクトを projects.json に同期し、
+    すべて「マスタープロジェクト」としてランチャーに表示されるようにする。"""
     try:
-        existing = _load_projects_list()
-        default_entry = {
-            "id":    "default",
-            "name":  DEFAULT_WORKSPACE_NAME,
-            "emoji": DEFAULT_WORKSPACE_EMOJI,
-            "db":    DB_PATH.name,        # "kakeibo.db" (実データ)
-            "color": "#e2c97e",
-        }
-        if not existing:
-            seed = [default_entry]
-        else:
-            seed = list(existing)
-            for i, p in enumerate(seed):
-                if p.get("id") == "default":
-                    # 名前・絵文字・DB パスを最新仕様に張り替え
-                    seed[i] = {**p, **default_entry}
-                    break
-            else:
-                seed.insert(0, default_entry)
-        PROJECTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
-            _json.dump(seed, f, ensure_ascii=False, indent=2)
-        logger.info(f"ensured {PROJECTS_FILE} default workspace name={DEFAULT_WORKSPACE_NAME}")
+        from core.projects import sync_master_projects
+        sync_master_projects()
+        logger.info(f"synced projects to {PROJECTS_FILE}")
     except Exception as e:
         logger.warning(f"_ensure_kakeibo_workspace: {e}")
 

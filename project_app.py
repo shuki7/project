@@ -95,6 +95,10 @@ def new_project():
             client_name=(request.form.get("client_name") or "").strip(),
             manager_name=(request.form.get("manager_name") or "").strip(),
         )
+        # ランチャー用に同期
+        from core.projects import sync_master_projects
+        sync_master_projects()
+        
         flash(f"プロジェクト「{name}」を作成しました。", "success")
         return redirect(url_for("project.detail", project_id=pid))
     return render_template("project/form.html", project=None, page="new")
