@@ -59,6 +59,7 @@ def sync_master_projects():
             "emoji": db_p.get("emoji") or "📁",
             "db":    "kakeibo.db", # マスターDBを使用
             "color": db_p.get("color") or "#16213e",
+            "is_group": bool(db_p.get("is_group")),
         }
     
     save_workspaces(list(projects_map.values()))

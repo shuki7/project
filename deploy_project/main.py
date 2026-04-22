@@ -147,77 +147,8 @@ def handle_exception(e):
 def health():
     return "ok", 200
 
-@flask_app.route("/_debug_projects")
-def _debug_projects():
-    """一時的: projects.json を複数の候補場所から探す。"""
-    import json as _j
-    from pathlib import Path as _P
-    from flask import jsonify
-    candidates = [
-        PROJECTS_FILE,
-        _P("/home/ordp5944/public_html/shuki.link/keiri/projects.json"),
-        _P("/home/ordp5944/public_html/shuki.link/keiri/data/projects.json"),
-        _P("/home/ordp5944/keiri_data/projects.json"),
-    ]
-    found = {}
-    for c in candidates:
-        try:
-            if c.exists():
-                with open(c, "r", encoding="utf-8") as f:
-                    found[str(c)] = _j.load(f)
-            else:
-                found[str(c)] = "(not found)"
-        except Exception as e:
-            found[str(c)] = f"error: {e}"
-    # also list keiri app root and data subdir
-    listings = {}
-    for d in [
-        _P("/home/ordp5944/public_html/shuki.link/keiri"),
-        _P("/home/ordp5944/public_html/shuki.link/keiri/data"),
-    ]:
-        try:
-            listings[str(d)] = sorted([p.name for p in d.iterdir()])
-        except Exception as e:
-            listings[str(d)] = f"error: {e}"
-    # also read OLD keiri's .env and config.py
-    extra = {}
-    for f in [
-        _P("/home/ordp5944/public_html/shuki.link/keiri/.env"),
-        _P("/home/ordp5944/public_html/shuki.link/keiri/config.py"),
-    ]:
-        try:
-            extra[str(f)] = f.read_text(encoding="utf-8")[:2000]
-        except Exception as e:
-            extra[str(f)] = f"error: {e}"
-    # inspect each DB to see which has data
-    import sqlite3 as _sql
-    db_info = {}
-    keiri_data_dir = _P("/home/ordp5944/public_html/shuki.link/keiri/data")
-    for db_file in keiri_data_dir.glob("*.db"):
-        info = {"size": db_file.stat().st_size}
-        try:
-            conn = _sql.connect(str(db_file))
-            cur = conn.cursor()
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = [r[0] for r in cur.fetchall()]
-            info["tables"] = tables
-            for t in ("expenses", "revenue", "tasks", "contacts"):
-                if t in tables:
-                    cur.execute(f"SELECT COUNT(*) FROM {t}")
-                    info[f"{t}_count"] = cur.fetchone()[0]
-            conn.close()
-        except Exception as e:
-            info["error"] = str(e)
-        db_info[db_file.name] = info
-    return jsonify({
-        "PROJECTS_FILE_configured": str(PROJECTS_FILE),
-        "DB_PATH":                  str(DB_PATH),
-        "candidates":               found,
-        "listings":                 listings,
-        "old_keiri_files":          extra,
-        "db_info":                  db_info,
-        "session_project_id":       session.get("project_id"),
     })
+
 
 # 注: ルート "/" は project_bp.list_projects がハンドル。
 #     未ログイン時は project_bp.before_request で web.login にリダイレクト。

@@ -263,6 +263,23 @@ def add_project():
         return redirect(url_for("web.launcher", parent_id=parent_id))
     
     projects = _load_projects()
+    
+    if is_group:
+        # マスタープロジェクトとして kakeibo.db の projects テーブルに登録
+        from core.database import insert_project
+        from core.projects import sync_master_projects
+        new_id = insert_project(
+            name=name,
+            emoji=emoji,
+            color=color,
+            description="",
+            is_group=1
+        )
+        sync_master_projects()
+        flash(f"マスタープロジェクト「{name}」を作成しました。", "success")
+        return redirect(url_for("web.launcher", parent_id=parent_id))
+    
+    # 独立した（または子）ワークスペースとして登録
     pid = str(uuid.uuid4())[:8]
     db_name = f"kakeibo_{pid}.db"
     
@@ -272,13 +289,14 @@ def add_project():
         "emoji": emoji,
         "db": db_name,
         "color": color,
-        "is_group": is_group
+        "is_group": False
     }
     if parent_id:
         new_p["parent_id"] = parent_id
         
     projects.append(new_p)
     _save_projects(projects)
+
     
     # 新しいDBの初期化
     db_path = PROJECTS_FILE.parent / db_name
