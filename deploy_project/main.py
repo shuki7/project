@@ -22,14 +22,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── DB 初期化 ────────────────────────────────────────────────
-# from config import DB_PATH
-# from core.database import init_db
-# 
-# try:
-#     init_db(DB_PATH)
-#     logger.info(f"DB initialized at {DB_PATH}")
-# except Exception as e:
-#     logger.error(f"DB init failed: {e}")
+from config import DB_PATH
+from core.database import init_db
+
+try:
+    init_db(DB_PATH)
+    logger.info(f"DB initialized at {DB_PATH}")
+except Exception as e:
+    logger.error(f"DB init failed: {e}")
 
 # ── Flask アプリ ────────────────────────────────────────────
 flask_app = Flask(__name__)
@@ -116,16 +116,16 @@ def _auto_select_kakeibo_workspace():
 
 @flask_app.route("/")
 def index():
-    return "Minimal main.py is working! No DB, No Blueprints."
+    return "DB and project_bp are working! web_app is commented out."
 
 
-# try:
-#     from project_app import project_bp
-#     # プロジェクト管理をルートに配置。各ルートは /p/<id> などで衝突回避。
-#     flask_app.register_blueprint(project_bp, url_prefix="")
-#     logger.info("registered project blueprint at /")
-# except Exception as e:
-#     logger.error(f"failed to register project blueprint: {e}")
+try:
+    from project_app import project_bp
+    flask_app.register_blueprint(project_bp, url_prefix="")
+    logger.info("registered project blueprint at /")
+except Exception as e:
+    logger.error(f"failed to register project blueprint: {e}")
+
 
 
 # ── ヘルスチェック ─────────────────────────────────────────
