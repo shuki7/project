@@ -160,6 +160,7 @@ application = flask_app
 # 【データ復旧】プロジェクト説明文の復元
 try:
     import sqlite3
+    import json
     with sqlite3.connect(DB_PATH) as conn:
         # AXI
         conn.execute("UPDATE projects SET description = ? WHERE name LIKE ? AND (description IS NULL OR description = '')", 
@@ -171,8 +172,22 @@ try:
         conn.execute("UPDATE projects SET description = ? WHERE name LIKE ? AND (description IS NULL OR description = '')", 
             ("上村修基のバリでの生活費", "%上村修基バリ島生活費%"))
         conn.commit()
+
+    # バリジャパンドリームをマスター化
+    if PROJECTS_FILE.exists():
+        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+            projs = json.load(f)
+        upd = False
+        for p in projs:
+            if ("BALI JAPAN DREAM" in p["name"] or p["id"] == "bali0001") and not p.get("is_group"):
+                p["is_group"] = True
+                upd = True
+        if upd:
+            with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+                json.dump(projs, f, ensure_ascii=False, indent=4)
 except Exception:
     pass
+
 
 # 【緊急修理】バリジャパンドリーム以外のプロジェクトのDBを分離する（一度だけ実行）
 try:
