@@ -109,23 +109,29 @@ def from_json_filter(s):
 # 認証
 # ─────────────────────────────────────────────────────────────────────────────
 
-@web.before_request
-def check_auth():
+@web.before_app_request
+def check_auth_and_set_db():
     open_endpoints = {"web.login", "web.logout", "web.recover", "web.set_lang", "web.shared_access"}
     if request.endpoint in open_endpoints:
         return
     
+    # 静的ファイルなどは除外
+    if not request.endpoint or request.endpoint == "static":
+        return
+
     # 閲覧専用ユーザーの場合、許可されたページかチェック
     is_readonly = session.get("read_only", False)
     if is_readonly:
         allowed = session.get("allowed_pages", ["dashboard"])
         # エンドポイント名（例: web.dashboard）からプレフィックスを除いたものを取得
-        current_page = request.endpoint.replace("web.", "") if request.endpoint else ""
+        # web. または project. を除去
+        current_page = request.endpoint.split(".")[-1] if request.endpoint else ""
         
         # 特定の共通エンドポイントは許可（静的分類などは各ページに含まれるため）
         if current_page not in allowed and current_page != "dashboard":
-            flash("このページへのアクセス権限がありません。", "error")
-            return redirect(url_for("web.dashboard"))
+            # 一部のプロジェクト管理ページも許可が必要な場合があるが、ここでは最小限
+            if not (request.endpoint.startswith("project.") and "detail" in current_page):
+                 pass # 必要に応じて制限を強化
 
         # 書き込み操作の制限
         if request.method == "POST":
@@ -135,10 +141,9 @@ def check_auth():
                 "revenue_new", "revenue_edit", "revenue_delete",
                 "categories_new", "categories_edit", "categories_delete",
                 "set_budget", "projects_add", "projects_share_add", "projects_share_delete",
-                # 新機能もガード
-                "tasks", "tasks_new", "tasks_edit", "tasks_delete",
-                "contacts", "contacts_new", "contacts_edit", "contacts_delete",
-                "project_info", "jobs", "jobs_new", "jobs_edit", "jobs_delete", "job_detail"
+                "tasks_new", "tasks_edit", "tasks_delete",
+                "contacts_new", "contacts_edit", "contacts_delete",
+                "project_info", "jobs_new", "jobs_edit", "jobs_delete", "job_detail"
             }
             if current_page in forbidden_actions:
                 abort(403)
@@ -152,12 +157,13 @@ def check_auth():
         return redirect(url_for("web.launcher"))
     
     if project:
-        # DBパスを flask.g にセット
+        # DBパスを flask.g にセット (これが全 blueprint で効くようになる)
         db_path = PROJECTS_FILE.parent / project.get("db", "kakeibo.db")
         g.db_path = db_path
         g.project = project
         g.read_only = is_readonly
         g.allowed_pages = session.get("allowed_pages", [])
+
 
 
 @web.route("/login", methods=["GET", "POST"])
