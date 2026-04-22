@@ -23,8 +23,14 @@ from config import (
     COURSE_KEYWORDS, REPORTS_DIR, PROJECTS_FILE, DB_PATH,
 )
 from flask import g
-from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
-from sync.gdrive import upload_receipt_bytes
+try:
+    from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
+except ImportError:
+    parse_receipt_from_bytes = classify_category = compress_image = None
+try:
+    from sync.gdrive import upload_receipt_bytes
+except ImportError:
+    upload_receipt_bytes = None
 from translations import get_T
 from core.database import (
     # カテゴリ
@@ -225,6 +231,16 @@ def select_project(project_id):
     if project:
         session["project_id"] = project_id
         session.modified = True
+        
+        # db が kakeibo.db なら Master Project
+        if project.get("db") == "kakeibo.db":
+            from core.database import get_all_projects
+            master_projects = get_all_projects()
+            # 名前でマッピング
+            target = next((p for p in master_projects if p["name"] == project["name"]), None)
+            if target:
+                return redirect(url_for("project.detail", project_id=target["id"]))
+                
         return redirect(url_for("web.workspace_home"))
     
     flash("プロジェクトが見つかりません。", "error")

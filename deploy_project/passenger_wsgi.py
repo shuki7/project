@@ -27,17 +27,16 @@ from main import application as _flask_app  # noqa: E402
 
 
 def application(environ, start_response):
-    """PassengerBaseURI=/project を扱う:
-    - PATH_INFO に /project を復元（Flask Blueprint と整合）
-    - SCRIPT_NAME は空にして url_for() の二重プレフィックス回避
-    ※ 実際には Blueprint 側に /project を含めずに、SCRIPT_NAME=/project を立てる方が
-      自然なので、こちらの方式を採用：PATH_INFO はそのまま、SCRIPT_NAME に /project を立てる。
-    """
-    # cPanel/LiteSpeed が PATH_INFO に /project を含めて渡してくる場合と
-    # 含めずに渡してくる場合の両方に対応する。
-    path = environ.get("PATH_INFO", "") or ""
-    if path.startswith("/project"):
-        # /project を剥がす（SCRIPT_NAME に立てる）
-        environ["PATH_INFO"] = path[len("/project"):] or "/"
-    environ["SCRIPT_NAME"] = "/project"
-    return _flask_app(environ, start_response)
+    try:
+        # PATH_INFO 調整
+        path = environ.get("PATH_INFO", "") or ""
+        if path.startswith("/project"):
+            environ["PATH_INFO"] = path[len("/project"):] or "/"
+        environ["SCRIPT_NAME"] = "/project"
+        return _flask_app(environ, start_response)
+    except Exception:
+        import traceback
+        status = "500 Internal Server Error"
+        response_headers = [("Content-type", "text/plain; charset=utf-8")]
+        start_response(status, response_headers)
+        return [traceback.format_exc().encode("utf-8")]
