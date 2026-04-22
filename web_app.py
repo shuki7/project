@@ -235,16 +235,21 @@ def select_project(project_id):
         session["project_id"] = project_id
         session.modified = True
         
-        # db が kakeibo.db なら Master Project
-        if project.get("db") == "kakeibo.db":
-            from core.database import get_all_projects
-            master_projects = get_all_projects()
-            # 名前でマッピング
-            target = next((p for p in master_projects if p["name"] == project["name"]), None)
-            if target:
-                return redirect(url_for("project.detail", project_id=target["id"]))
+        # is_group フラグが立っていれば Master Project として詳細画面へ
+        if project.get("is_group"):
+            if project.get("db") == "kakeibo.db":
+                from core.database import get_all_projects
+                master_projects = get_all_projects()
+                # 名前でマッピング
+                target = next((p for p in master_projects if p["name"] == project["name"]), None)
+                if target:
+                    return redirect(url_for("project.detail", project_id=target["id"]))
+            else:
+                # 隔離されたDBの場合、自分自身は常に ID=1 として登録されている
+                return redirect(url_for("project.detail", project_id=1))
                 
         return redirect(url_for("web.workspace_home"))
+
     
     flash("プロジェクトが見つかりません。", "error")
     return redirect(url_for("web.launcher"))

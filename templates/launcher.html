@@ -207,17 +207,31 @@
             <div class="project-emoji">{{ p.emoji }}</div>
             <div class="project-name">{{ p.name }}</div>
             <div class="project-status">
-                {% if p.db == 'kakeibo.db' %}Master{% else %}Active{% endif %}
+                {% if p.is_group %}Master{% else %}Active{% endif %}
             </div>
+
         </a>
         
-        {% if p.id != '1' %}
-        <form method="POST" action="{{ url_for('web.delete_project_workspace', project_id=p.id) }}" onsubmit="return confirm('本当に「{{ p.name }}」を削除しますか？\n（このプロジェクトのすべてのデータが完全に削除されます）');" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-            <button type="submit" style="background: rgba(255,0,0,0.2); border: none; color: #ff6b6b; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,0,0,0.5)'" onmouseout="this.style.background='rgba(255,0,0,0.2)'" title="プロジェクトを削除">
-                🗑
+        <div style="position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; gap: 5px;">
+            {# 共有リンク管理ボタン #}
+            <button type="button" 
+                    onclick="openShareModal('{{ p.id }}', '{{ p.name }}', {{ (p.shares or []) | tojson }})" 
+                    style="background: rgba(59,130,246,0.2); border: none; color: #60a5fa; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" 
+                    onmouseover="this.style.background='rgba(59,130,246,0.5)'" 
+                    onmouseout="this.style.background='rgba(59,130,246,0.2)'" 
+                    title="共有リンクを管理">
+                🔗
             </button>
-        </form>
-        {% endif %}
+
+            {% if p.id != '1' %}
+            <form method="POST" action="{{ url_for('web.delete_project_workspace', project_id=p.id) }}" onsubmit="return confirm('本当に「{{ p.name }}」を削除しますか？\n（このプロジェクトのすべてのデータが完全に削除されます）');" style="margin: 0;">
+                <button type="submit" style="background: rgba(255,0,0,0.2); border: none; color: #ff6b6b; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,0,0,0.5)'" onmouseout="this.style.background='rgba(255,0,0,0.2)'" title="プロジェクトを削除">
+                    🗑
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
     </div>
     {% endfor %}
 
@@ -367,5 +381,17 @@ window.onclick = function(event) {
     if (event.target == pModal) closeModal();
     if (event.target == sModal) closeShareModal();
 }
+
+// ページ読み込み時にハッシュ（#share-ID）があれば共有モーダルを自動で開く
+window.onload = function() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#share-')) {
+        const pid = hash.replace('#share-', '');
+        // 該当のプロジェクトカードにある共有ボタンを探してクリック
+        const btn = document.querySelector(`button[onclick*="openShareModal('${pid}'"]`);
+        if (btn) btn.click();
+    }
+}
 </script>
 {% endblock %}
+
