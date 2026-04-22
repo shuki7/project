@@ -157,33 +157,6 @@ def health():
 # Passenger が要求する WSGI callable
 application = flask_app
 
-# 起動時に一度だけ強制移行を実行（全プロジェクトをマスター化）
-try:
-    from core.projects import sync_master_projects
-    import sqlite3
-    import json
-    
-    # 1. DB内の既存プロジェクトをすべて is_group=1 にする
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE projects SET is_group = 1")
-        conn.commit()
-    
-    # 2. projects.json のプロジェクトもすべて kakeibo.db を向くように強制同期
-    if PROJECTS_FILE.exists():
-        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-            projs = json.load(f)
-        for p in projs:
-            p["db"] = "kakeibo.db"
-            p["is_group"] = True
-        with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
-            json.dump(projs, f, ensure_ascii=False, indent=4)
-            
-    # 3. 最新の状態を再同期
-    sync_master_projects()
-except Exception as e:
-    print(f"Startup migration failed: {e}")
-
-
 
 # ── ローカル開発用 ─────────────────────────────────────────
 if __name__ == "__main__":

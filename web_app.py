@@ -263,26 +263,44 @@ def add_project():
         return redirect(url_for("web.launcher", parent_id=parent_id))
     
     projects = _load_projects()
-    
-    if is_group:
-        # マスタープロジェクトとして kakeibo.db の projects テーブルに登録
-        from core.database import insert_project
-        from core.projects import sync_master_projects
-        new_id = insert_project(
-            name=name,
-            emoji=emoji,
-            color=color,
-            description="",
-            is_group=1
-        )
-        sync_master_projects()
-        flash(f"マスタープロジェクト「{name}」を作成しました。", "success")
-        return redirect(url_for("web.launcher", parent_id=parent_id))
-    
-    # 独立した（または子）ワークスペースとして登録
     pid = str(uuid.uuid4())[:8]
     db_name = f"kakeibo_{pid}.db"
     
+    if is_group:
+        # マスタープロジェクト（グループ）として登録
+        # 自身を識別するための ID=1 を新しいDB内に作成し、projects.json にも登録
+        new_p = {
+            "id": pid,
+            "name": name,
+            "emoji": emoji,
+            "db": db_name,
+            "color": color,
+            "is_group": True
+        }
+        if parent_id:
+            new_p["parent_id"] = parent_id
+        
+        projects.append(new_p)
+        _save_projects(projects)
+        
+        # 新しいDBの初期化
+        db_path = PROJECTS_FILE.parent / db_name
+        from core.database import init_db, get_connection, SCHEMA_SQL, transaction
+        conn = get_connection(db_path)
+        conn.executescript(SCHEMA_SQL)
+        conn.close()
+        
+        # 新しいDB内の projects テーブルに自分自身(ID=1)を登録
+        with transaction(db_path) as conn:
+            conn.execute(
+                "INSERT INTO projects (id, name, emoji, color, is_group) VALUES (1, ?, ?, ?, 1)",
+                (name, emoji, color)
+            )
+        
+        flash(f"マスタープロジェクト「{name}」を作成しました。", "success")
+        return redirect(url_for("web.launcher", parent_id=parent_id))
+    
+    # 独立した通常のワークスペースとして登録
     new_p = {
         "id": pid,
         "name": name,
@@ -296,6 +314,7 @@ def add_project():
         
     projects.append(new_p)
     _save_projects(projects)
+
 
     
     # 新しいDBの初期化
@@ -487,6 +506,7 @@ def inject_globals():
         "fmt_idr": fmt_idr,
         "company_name": project["name"] if project else COMPANY_NAME,
         "project_emoji": project["emoji"] if project else "",
+        "project_color": project.get("color") if project else "#16213e",
         "current_year": datetime.now().year,
         "current_month": datetime.now().month,
         "active_project": project,
