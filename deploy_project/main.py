@@ -123,11 +123,11 @@ def index():
 
 try:
     from project_app import project_bp
-    # プロジェクト管理は内部機能として配置
-    flask_app.register_blueprint(project_bp, url_prefix="/mgmt")
-    logger.info("registered project blueprint at /mgmt")
+    # プロジェクト管理をルートに配置。各ルートは /p/<id> などで衝突回避。
+    flask_app.register_blueprint(project_bp, url_prefix="")
+    logger.info("registered project blueprint at /")
 except Exception as e:
-    logger.error(f"failed to register web blueprint: {e}")
+    logger.error(f"failed to register project blueprint: {e}")
 
 
 # ── ヘルスチェック ─────────────────────────────────────────

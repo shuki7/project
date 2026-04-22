@@ -63,7 +63,7 @@ def check_auth():
 # ─────────────────────────────────────────────────────────────────────────────
 # 一覧
 # ─────────────────────────────────────────────────────────────────────────────
-@project_bp.route("/", methods=["GET"], strict_slashes=False)
+@project_bp.route("/all", methods=["GET"], strict_slashes=False)
 def list_projects():
     show_archived = request.args.get("archived") == "1"
     projects = get_all_projects(include_archived=show_archived)
@@ -107,7 +107,7 @@ def new_project():
 # ─────────────────────────────────────────────────────────────────────────────
 # 詳細
 # ─────────────────────────────────────────────────────────────────────────────
-@project_bp.route("/<int:project_id>", methods=["GET"], strict_slashes=False)
+@project_bp.route("/p/<int:project_id>", methods=["GET"], strict_slashes=False)
 def detail(project_id):
     project = get_project_by_id(project_id)
     if not project:
