@@ -27,11 +27,13 @@ try:
     from main import application as _flask_app  # noqa: E402
 except Exception:
     import traceback
+    import sys
     def application(environ, start_response):
         status = "500 Internal Server Error"
         response_headers = [("Content-type", "text/plain; charset=utf-8")]
         start_response(status, response_headers)
-        return [traceback.format_exc().encode("utf-8")]
+        err = f"Python {sys.version}\n\n{traceback.format_exc()}"
+        return [err.encode("utf-8")]
 else:
     def application(environ, start_response):
         try:
@@ -48,7 +50,9 @@ else:
             
         except Exception:
             import traceback
+            import sys
             status = "500 Internal Server Error"
             response_headers = [("Content-type", "text/plain; charset=utf-8")]
             start_response(status, response_headers)
-            return [traceback.format_exc().encode("utf-8")]
+            err = f"Python {sys.version}\n\n{traceback.format_exc()}"
+            return [err.encode("utf-8")]

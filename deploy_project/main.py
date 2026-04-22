@@ -117,8 +117,8 @@ def _auto_select_kakeibo_workspace():
 @flask_app.route("/")
 def index():
     if not session.get("logged_in"):
-        return redirect(url_for("web.login"))
-    return redirect(url_for("web.launcher"))
+        return redirect("/project/keiri/login")
+    return redirect("/project/keiri/launcher")
 
 
 try:
