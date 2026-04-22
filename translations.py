@@ -13,7 +13,8 @@ MONTHS_ID_FULL = ["Januari","Februari","Maret","April","Mei","Juni",
 TRANSLATIONS = {
     "ja": {
         # ナビ
-        "nav_dashboard":   "ダッシュボード",
+        "nav_home":        "ホーム",
+        "nav_dashboard":   "経理ダッシュボード",
         "nav_expenses":    "経費",
         "nav_revenue":     "収入",
         "nav_categories":  "勘定科目",
@@ -23,6 +24,7 @@ TRANSLATIONS = {
         "nav_logout":      "ログアウト",
         "nav_search_ph":   "検索...",
         "nav_search_btn":  "検索",
+        "nav_staff":       "スタッフ",
 
         # ダッシュボード見出し
         "dash_title":        "ダッシュボード",
@@ -124,11 +126,13 @@ TRANSLATIONS = {
         "info_facility":   "施設・公共料金情報",
         "info_emergency":  "緊急連絡先",
         "info_updated":    "最終更新",
+        "nav_urls":        "URL一覧",
     },
 
     "id": {
         # ナビ
-        "nav_dashboard":   "Dasbor",
+        "nav_home":        "Beranda",
+        "nav_dashboard":   "Dasbor Keuangan",
         "nav_expenses":    "Pengeluaran",
         "nav_revenue":     "Pendapatan",
         "nav_categories":  "Kategori",
@@ -138,6 +142,7 @@ TRANSLATIONS = {
         "nav_logout":      "Keluar",
         "nav_search_ph":   "Cari...",
         "nav_search_btn":  "Cari",
+        "nav_staff":       "Staf",
 
         # ダッシュボード見出し
         "dash_title":      "Dasbor",
@@ -240,6 +245,7 @@ TRANSLATIONS = {
         "info_facility":   "Info Fasilitas & Utilitas",
         "info_emergency":  "Kontak Darurat",
         "info_updated":    "Pembaruan Terakhir",
+        "nav_urls":        "Daftar URL",
     },
 }
 

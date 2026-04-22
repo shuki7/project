@@ -388,7 +388,8 @@
     {% endif %}
     <ul class="nav-links" id="navLinks">
       <!-- 経理セクション -->
-      <li><a href="{{ url_for('web.job_dashboard') }}"       {% if page == 'dashboard'   %}class="active"{% endif %}>🏠 {{ T.nav_dashboard }}</a></li>
+      <li><a href="{{ url_for('web.workspace_home') }}"      {% if page == 'home'        %}class="active"{% endif %}>🏠 {{ T.nav_home }}</a></li>
+      <li><a href="{{ url_for('web.job_dashboard') }}"       {% if page == 'dashboard'   %}class="active"{% endif %}>📊 {{ T.nav_dashboard }}</a></li>
       <li><a href="{{ url_for('web.expenses_list') }}"   {% if page == 'expenses'    %}class="active"{% endif %}>💸 {{ T.nav_expenses }}</a></li>
       <li><a href="{{ url_for('web.revenue_list') }}"    {% if page == 'revenue'     %}class="active"{% endif %}>📈 {{ T.nav_revenue }}</a></li>
       
@@ -399,7 +400,9 @@
       <li><a href="{{ url_for('web.tasks') }}"          {% if page == 'tasks'       %}class="active"{% endif %}>✅ {{ T.nav_tasks }}</a></li>
       <li><a href="{{ url_for('web.jobs') }}"           {% if page == 'jobs'        %}class="active"{% endif %}>💎 {{ T.nav_jobs }}</a></li>
       <li><a href="{{ url_for('web.contacts') }}"       {% if page == 'contacts'    %}class="active"{% endif %}>👥 {{ T.nav_contacts }}</a></li>
+      <li><a href="{{ url_for('web.staff') }}"          {% if page == 'staff'       %}class="active"{% endif %}>🧑‍💼 {{ T.nav_staff }}</a></li>
       <li><a href="{{ url_for('web.project_info') }}"   {% if page == 'info'        %}class="active"{% endif %}>📄 {{ T.nav_info }}</a></li>
+      <li><a href="{{ url_for('project.url_list') }}"   {% if page == 'urls'        %}class="active"{% endif %}>🔗 {{ T.nav_urls }}</a></li>
       {% endif %}
 
       {% if not read_only or 'categories' in allowed_pages %}

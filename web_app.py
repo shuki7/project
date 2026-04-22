@@ -59,22 +59,19 @@ web = Blueprint("web", __name__)
 
 # ── プロジェクト管理 ─────────────────────────────────────────────────────────────
 
+from core.projects import load_workspaces, save_workspaces
+
 def _load_projects():
-    if not PROJECTS_FILE.exists():
-        return []
-    with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_workspaces()
 
 def _save_projects(projects):
-    PROJECTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(projects, f, ensure_ascii=False, indent=4)
+    save_workspaces(projects)
 
 def _get_active_project():
     pid = session.get("project_id")
     if not pid:
         return None
-    projects = _load_projects()
+    projects = load_workspaces()
     for p in projects:
         if p["id"] == pid:
             return p
@@ -199,8 +196,25 @@ def recover():
 
 @web.route("/launcher")
 def launcher():
-    projects = _load_projects()
-    return render_template("launcher.html", projects=projects)
+    parent_id = request.args.get("parent_id")
+    all_projects = _load_projects()
+    
+    # 全プロジェクトの中から、誰かの親になっている ID を抽出
+    parent_ids = {p["parent_id"] for p in all_projects if p.get("parent_id")}
+    
+    if parent_id:
+        # 子プロジェクト（特定のグループ内）を表示
+        display_projects = [p for p in all_projects if p.get("parent_id") == parent_id]
+        parent = next((p for p in all_projects if p["id"] == parent_id), None)
+    else:
+        # 親プロジェクト（または独立したプロジェクト）のみを表示
+        display_projects = [p for p in all_projects if not p.get("parent_id")]
+        parent = None
+        
+    return render_template("launcher.html", 
+                           projects=display_projects, 
+                           parent=parent,
+                           parent_ids=parent_ids)
 
 
 @web.route("/choose/<project_id>")
@@ -211,7 +225,7 @@ def select_project(project_id):
     if project:
         session["project_id"] = project_id
         session.modified = True
-        return redirect(url_for("web.dashboard"))
+        return redirect(url_for("web.workspace_home"))
     
     flash("プロジェクトが見つかりません。", "error")
     return redirect(url_for("web.launcher"))
@@ -222,9 +236,12 @@ def add_project():
     name = request.form.get("name", "").strip()
     emoji = request.form.get("emoji", "").strip() or "📁"
     color = request.form.get("color", "#3b82f6")
+    parent_id = request.form.get("parent_id")
+    is_group = request.form.get("is_group") == "1"
+    
     if not name:
         flash("名前は必須です。", "error")
-        return redirect(url_for("web.launcher"))
+        return redirect(url_for("web.launcher", parent_id=parent_id))
     
     projects = _load_projects()
     pid = str(uuid.uuid4())[:8]
@@ -235,26 +252,26 @@ def add_project():
         "name": name,
         "emoji": emoji,
         "db": db_name,
-        "color": color
+        "color": color,
+        "is_group": is_group
     }
+    if parent_id:
+        new_p["parent_id"] = parent_id
+        
     projects.append(new_p)
     _save_projects(projects)
     
     # 新しいDBの初期化
     db_path = PROJECTS_FILE.parent / db_name
-    from core.database import init_db
-    init_db() # get_connection internally will use g.db_path or DB_PATH. 
-    # But g.db_path is not set yet for this request usually.
-    # So we should call it with path.
-    from core.database import get_connection
+    from core.database import init_db, get_connection, SCHEMA_SQL
+    
     # Explicitly init the new DB
     conn = get_connection(db_path)
-    from core.database import SCHEMA_SQL
     conn.executescript(SCHEMA_SQL)
     conn.close()
 
     flash(f"プロジェクト「{name}」を作成しました。", "success")
-    return redirect(url_for("web.launcher"))
+    return redirect(url_for("web.launcher", parent_id=parent_id))
 
 
 @web.route("/share/<token>")
@@ -1385,3 +1402,116 @@ def jobs_delete(id):
     delete_job(id)
     flash("案件を削除しました", "success")
     return redirect(url_for("web.jobs"))
+@web.route("/home")
+def workspace_home():
+    """ワークスペースのホーム画面（メニューグリッド）を表示する。"""
+    from core.database import get_project_attachments
+    # 社長の顔写真を探す
+    photos = get_project_attachments(1, category="photo")
+    president_photo = next((p for p in photos if p.get("notes") == "社長の顔写真"), None)
+    
+    return render_template("workspace_home.html", page="home", president_photo=president_photo)
+
+
+@web.route("/staff")
+def staff():
+    """現在のワークスペース内のスタッフ一覧を表示する。"""
+    from core.database import get_staff_by_project
+    staff_list = get_staff_by_project(0) 
+    if not staff_list:
+        staff_list = get_staff_by_project(1)
+        
+    return render_template("staff_workspace.html", staff=staff_list, page="staff")
+
+
+@web.route("/links", methods=["GET", "POST"])
+def links():
+    """現在のワークスペース内のURLリンク一覧を管理する。"""
+    from core.database import get_project_info_items, save_project_info_item, delete_project_info_item
+    import json
+    import uuid
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "delete":
+            item_id = request.form.get("id")
+            delete_project_info_item(item_id)
+            flash("リンクを削除しました", "success")
+        else:
+            item_id = request.form.get("id") or str(uuid.uuid4())
+            label = request.form.get("label")
+            url = request.form.get("url")
+            category = "url"
+            fields_json = json.dumps({"url": url})
+            # ワークスペース内は project_id=1 固定とする
+            save_project_info_item(item_id, 1, category, label, fields_json)
+            flash("リンクを保存しました", "success")
+        return redirect(url_for("web.links"))
+
+    # project_id=1 の項目を取得
+    items = get_project_info_items(1, category="url")
+    # JSONデコード
+    links_list = []
+    for it in items:
+        d = dict(it)
+        try:
+            d["fields"] = json.loads(it["fields_json"])
+        except:
+            d["fields"] = {}
+        links_list.append(d)
+
+    return render_template("links_workspace.html", links=links_list, page="urls")
+
+
+@web.route("/gallery", methods=["GET", "POST"])
+def gallery():
+    """プロジェクトのギャラリー（写真）を管理する。"""
+    from core.database import get_project_attachments, insert_project_attachment, delete_project_attachment
+    from sync.gdrive import upload_project_file_bytes, delete_drive_file
+    import uuid
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "delete":
+            att_id = request.form.get("id")
+            att = get_project_attachment(att_id) if "get_project_attachment" in locals() else None # Need to import it
+            # I'll just use delete directly
+            delete_project_attachment(att_id)
+            flash("写真を削除しました", "success")
+        else:
+            file = request.files.get("photo")
+            if file and file.filename:
+                file_bytes = file.read()
+                filename = file.filename
+                mime_type = file.mimetype
+                size = len(file_bytes)
+                notes = request.form.get("notes", "") # 例: 'president'
+                
+                # Driveへアップロード
+                res = upload_project_file_bytes(
+                    project_name=session.get("company_name", "Unknown"),
+                    file_bytes=file_bytes,
+                    filename=filename,
+                    mime_type=mime_type,
+                    subfolder="gallery"
+                )
+                
+                if res.get("file_id"):
+                    insert_project_attachment(
+                        project_id=1,
+                        filename=filename,
+                        drive_file_id=res["file_id"],
+                        drive_url=res["url"],
+                        mime_type=mime_type,
+                        size_bytes=size,
+                        notes=notes,
+                        category="photo"
+                    )
+                    flash("写真をアップロードしました", "success")
+                else:
+                    flash("アップロードに失敗しました", "error")
+        return redirect(url_for("web.gallery"))
+
+    # 写真一覧を取得
+    photos = get_project_attachments(1, category="photo")
+    return render_template("gallery_workspace.html", photos=photos, page="gallery")

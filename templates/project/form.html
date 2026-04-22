@@ -96,16 +96,22 @@
         <input type="number" id="sort_order" name="sort_order"
                value="{{ project.sort_order if project else 0 }}">
       </div>
-      {% if project %}
-      <div class="form-group">
+      <div class="form-group" style="display:flex; align-items:center; gap:.5rem; height:100%;">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:.5rem; margin-top:1.5rem;">
+          <input type="checkbox" name="is_group" value="1" {% if project and project.is_group %}checked{% endif %}>
+          <span>マスタープロジェクト（枝分かれを許可）</span>
+        </label>
+      </div>
+    </div>
+    {% if project %}
+    <div class="form-group">
         <label for="status">ステータス</label>
         <select id="status" name="status">
           <option value="active"   {% if project.status == 'active'   %}selected{% endif %}>アクティブ</option>
           <option value="archived" {% if project.status == 'archived' %}selected{% endif %}>アーカイブ</option>
         </select>
-      </div>
-      {% endif %}
     </div>
+    {% endif %}
 
     <div class="preview-tile">
       <div style="font-size:.78rem; color:#888; margin-bottom:.5rem;">プレビュー</div>

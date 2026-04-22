@@ -10,8 +10,9 @@ from datetime import date
 
 from flask import (
     Blueprint, render_template, request, redirect,
-    url_for, flash, session,
+    url_for, flash, session, current_app,
 )
+from core.projects import load_workspaces, create_partner_workspace
 
 from core.database import (
     get_all_projects, get_project_by_id,
@@ -70,6 +71,7 @@ def list_projects():
         "project/list.html",
         projects=projects,
         show_archived=show_archived,
+        page="list",
     )
 
 
@@ -95,7 +97,7 @@ def new_project():
         )
         flash(f"プロジェクト「{name}」を作成しました。", "success")
         return redirect(url_for("project.detail", project_id=pid))
-    return render_template("project/form.html", project=None)
+    return render_template("project/form.html", project=None, page="new")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -691,7 +693,7 @@ def url_list():
                 "project": p,
                 "items": items
             })
-    return render_template("project/url_list.html", all_urls=all_urls)
+    return render_template("project/url_list.html", all_urls=all_urls, page="urls")
 
 
 # ─── スタッフに添付（Drive） ─────────────────────────────────────────────
@@ -762,3 +764,42 @@ def staff_attachment_upload(project_id, staff_id):
     flash(f"「{up_filename}」を Drive にアップロードしました。", "success")
     return redirect(url_for("project.staff_edit",
                             project_id=project_id, staff_id=staff_id))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 取引相手別管理 (枝分かれ)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@project_bp.route("/<int:project_id>/partners", methods=["GET"])
+def partners(project_id):
+    project = get_project_by_id(project_id)
+    if not project:
+        flash("プロジェクトが見つかりません。", "error")
+        return redirect(url_for("project.list_projects"))
+    
+    # このプロジェクトに紐付く子ワークスペースを抽出
+    all_ws = load_workspaces()
+    linked_partners = [ws for ws in all_ws if ws.get("parent_id") == f"db_project:{project_id}"]
+    
+    return render_template("project/partners.html", 
+                           project=project, 
+                           partners=linked_partners)
+
+
+@project_bp.route("/<int:project_id>/partners/add", methods=["POST"])
+def partners_add(project_id):
+    project = get_project_by_id(project_id)
+    if not project:
+        flash("プロジェクトが見つかりません。", "error")
+        return redirect(url_for("project.list_projects"))
+    
+    name = request.form.get("name", "").strip()
+    emoji = request.form.get("emoji", "").strip() or "🏢"
+    color = request.form.get("color", "#3b82f6")
+    
+    if not name:
+        flash("名前は必須です。", "error")
+        return redirect(url_for("project.partners", project_id=project_id))
+    
+    create_partner_workspace(name, emoji, color, project_id)
+    flash(f"取引相手「{name}」の経理空間を作成しました。", "success")
+    return redirect(url_for("project.partners", project_id=project_id))

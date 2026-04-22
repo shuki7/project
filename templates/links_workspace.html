@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}リンク管理 — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🔗 URL・外部リンク管理</h1>
+  <button class="btn btn-primary" onclick="openModal()">+ リンクを追加</button>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+  <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">
+    会社のウェブサイトや、提供しているサービス、関連ドキュメントのURLを整理して管理できます。
+  </p>
+
+  {% if links %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>項目名</th>
+          <th>URL</th>
+          <th style="width: 150px;">アクション</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in links %}
+        <tr>
+          <td><strong>{{ item.label }}</strong></td>
+          <td>
+            <a href="{{ item.fields.url }}" target="_blank" style="color: #3b82f6; text-decoration: none; word-break: break-all;">
+              {{ item.fields.url }} ↗
+            </a>
+          </td>
+          <td class="actions">
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-edit btn-sm" onclick="editLink('{{ item.id }}', '{{ item.label }}', '{{ item.fields.url }}')">編集</button>
+              <form method="post" style="display: inline;" onsubmit="return confirm('削除しますか？')">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">削除</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align: center; padding: 4rem; background: #f8f9fa; border-radius: 12px; border: 2px dashed #ddd;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🔗</div>
+    <h3 style="color: #666;">まだリンクが登録されていません</h3>
+    <p style="color: #999; margin-bottom: 1.5rem;">会社のHPやサービスへのリンクを追加しましょう。</p>
+    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+        <button class="btn btn-sm btn-edit" onclick="quickAdd('会社のウェブサイト')">🌐 ウェブサイト</button>
+        <button class="btn btn-sm btn-edit" onclick="quickAdd('会社展開サービス')">🚀 展開サービス</button>
+        <button class="btn btn-sm btn-edit" onclick="quickAdd('提供サービス')">💎 提供中サービス</button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- モーダル -->
+<div id="linkModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; padding: 1rem;">
+  <div style="background: #fff; border-radius: 12px; width: 100%; max-width: 500px; padding: 2rem;">
+    <h2 id="modalTitle" style="margin-bottom: 1.5rem; color: #16213e;">リンクの追加</h2>
+    <form method="post">
+      <input type="hidden" name="id" id="form-id">
+      <div class="form-group">
+        <label>項目名</label>
+        <input type="text" name="label" id="form-label" placeholder="例: 会社公式サイト" required>
+      </div>
+      <div class="form-group">
+        <label>URL (https://...)</label>
+        <input type="text" name="url" id="form-url" placeholder="https://example.com" required>
+      </div>
+      <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+        <button type="button" class="btn btn-edit" onclick="closeModal()">キャンセル</button>
+        <button type="submit" class="btn btn-primary">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('modalTitle').textContent = 'リンクの追加';
+    document.getElementById('form-id').value = '';
+    document.getElementById('form-label').value = '';
+    document.getElementById('form-url').value = '';
+    document.getElementById('linkModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('linkModal').style.display = 'none';
+}
+function editLink(id, label, url) {
+    document.getElementById('modalTitle').textContent = 'リンクの編集';
+    document.getElementById('form-id').value = id;
+    document.getElementById('form-label').value = label;
+    document.getElementById('form-url').value = url;
+    document.getElementById('linkModal').style.display = 'flex';
+}
+function quickAdd(label) {
+    openModal();
+    document.getElementById('form-label').value = label;
+}
+</script>
+{% endblock %}

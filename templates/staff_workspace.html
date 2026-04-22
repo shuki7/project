@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}スタッフ管理 — {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🧑‍💼 {{ T.nav_staff }}</h1>
+  {% if not read_only %}
+  <button class="btn btn-primary" onclick="alert('スタッフ追加機能は現在整備中です（DB操作は可能です）')">+ スタッフを追加</button>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if staff %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>氏名</th>
+          <th>役職</th>
+          <th>雇用形態</th>
+          <th>連絡先 (WhatsApp)</th>
+          <th>状態</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff %}
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              {% if s.photo_url %}
+                <img src="{{ s.photo_url }}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+              {% else %}
+                <div style="width:32px; height:32px; border-radius:50%; background:#e8eaf0; display:flex; align-items:center; justify-content:center; font-size:1rem;">👤</div>
+              {% endif %}
+              <div>
+                <strong>{{ s.name }}</strong>
+                <div class="text-muted" style="font-size:0.75rem;">{{ s.name_kana or '' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ s.position or '—' }}</td>
+          <td>{{ s.employment_type or '—' }}</td>
+          <td>{{ s.whatsapp or '—' }}</td>
+          <td>
+            <span class="btn btn-sm" style="background:{% if s.status == 'active' %}#d8f3dc; color:#1b4332;{% else %}#ffe5e5; color:#7b1a1a;{% endif %} cursor:default; padding:0.2rem 0.5rem; font-size:0.75rem;">
+              {{ '有効' if s.status == 'active' else '非アクティブ' }}
+            </span>
+          </td>
+          <td class="actions">
+            {% if not read_only %}
+            <button class="btn btn-edit btn-sm">編集</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center; padding:3rem; color:#888;">
+    <div style="font-size:3rem; margin-bottom:1rem;">🧑‍💼</div>
+    <p>このワークスペースにはまだスタッフが登録されていません。</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

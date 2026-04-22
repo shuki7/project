@@ -193,50 +193,90 @@
 {% endblock %}
 
 {% block content %}
+<div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 100;">
+    <a href="{{ url_for('project.url_list') }}" class="nav-link" style="color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s;">
+        🔗 {{ T.nav_urls }}
+    </a>
+</div>
+
 <div class="launcher-header">
-    <h1>SSP PROJECT</h1>
-    <p>管理するワークスペースを選択してください</p>
+    {% if parent %}
+        <div style="margin-bottom: 1rem;">
+            <a href="{{ url_for('web.launcher') }}" style="color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.9rem;">
+                ← マスタープロジェクト一覧に戻る
+            </a>
+        </div>
+        <h1>{{ parent.emoji }} {{ parent.name }}</h1>
+        <p>「取引相手」を選択してください</p>
+    {% else %}
+        <h1>SSP PROJECT</h1>
+        <p>管理するワークスペースを選択してください</p>
+    {% endif %}
 </div>
 
 <div class="project-grid">
     {% for p in projects %}
     <div style="position: relative;">
-        <!-- 共有ボタン -->
+        <!-- 共有ボタン（子プロジェクトのみ、または常に表示？） -->
         <button type="button" class="share-btn" title="共有管理" onclick="openShareModal('{{ p.id }}', '{{ p.name }}', {{ (p.shares or []) | tojson }})">
             🔗
         </button>
-        <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
-            <div class="project-emoji">{{ p.emoji }}</div>
-            <div class="project-name">{{ p.name }}</div>
-            <div class="project-status">Active</div>
-        </a>
+
+        {% if p.is_group or p.id in parent_ids %}
+            {# マスタープロジェクト（グループ）の場合はランチャーをドリルダウン #}
+            <a href="{{ url_for('web.launcher', parent_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
+                <div class="project-emoji">{{ p.emoji }}</div>
+                <div class="project-name">{{ p.name }}</div>
+                <div class="project-status" style="background: rgba(226, 201, 126, 0.2); color: #e2c97e;">Group</div>
+            </a>
+        {% else %}
+            {# 通常のプロジェクト/パートナーの場合はワークスペースに入る #}
+            <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="project-card" style="--accent-color: {{ p.color }}">
+                <div class="project-emoji">{{ p.emoji }}</div>
+                <div class="project-name">{{ p.name }}</div>
+                <div class="project-status">Active</div>
+            </a>
+        {% endif %}
     </div>
     {% endfor %}
 
     <!-- プロジェクト追加カード -->
     <div class="project-card add-project-card" onclick="openModal()">
         <div class="add-icon">+</div>
-        <div class="project-name" style="color: rgba(255,255,255,0.4)">新しいプロジェクト</div>
+        <div class="project-name" style="color: rgba(255,255,255,0.4)">
+            {% if parent %}新しい取引相手を追加{% else %}マスタープロジェクト作成{% endif %}
+        </div>
     </div>
 </div>
 
     <!-- プロジェクト追加モーダル -->
     <div id="projectModal" class="modal">
         <div class="modal-content">
-            <h2>新規プロジェクト作成</h2>
+            <h2>{% if parent %}「{{ parent.name }}」に取引相手を追加{% else %}新規マスタープロジェクト作成{% endif %}</h2>
             <form action="{{ url_for('web.add_project') }}" method="POST">
+                {% if parent %}
+                    <input type="hidden" name="parent_id" value="{{ parent.id }}">
+                {% endif %}
                 <div class="form-group">
-                    <label>プロジェクト名</label>
-                    <input type="text" name="name" placeholder="例: SSP Global Venture" required>
+                    <label>{% if parent %}取引相手名（企業・個人）{% else %}プロジェクト名{% endif %}</label>
+                    <input type="text" name="name" placeholder="例: {% if parent %}株式会社サクセス / 佐藤 秀樹{% else %}SSP Welfare Service{% endif %}" required>
                 </div>
                 <div class="form-group">
                     <label>絵文字 / アイコン</label>
-                    <input type="text" name="emoji" placeholder="例: 🌎" required>
+                    <input type="text" name="emoji" placeholder="例: {% if parent %}🏢{% else %}🎁{% endif %}" required>
                 </div>
                 <div class="form-group">
                     <label>テーマカラー</label>
-                    <input type="color" name="color" value="#3b82f6" style="height: 40px; padding: 2px;">
+                    <input type="color" name="color" value="{{ parent.color if parent else '#3b82f6' }}" style="height: 40px; padding: 2px;">
                 </div>
+                {% if not parent %}
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="is_group" value="1" checked> 
+                        <span>このプロジェクトを「グループ」にする（中に複数の取引相手を作成する）</span>
+                    </label>
+                </div>
+                {% endif %}
                 <div class="modal-actions">
                     <button type="button" class="btn btn-edit" onclick="closeModal()">キャンセル</button>
                     <button type="submit" class="btn btn-primary">作成する</button>

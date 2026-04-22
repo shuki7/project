@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS projects (
     color       TEXT,
     description TEXT,
     status      TEXT DEFAULT 'active',
+    is_group    INTEGER DEFAULT 0,      -- グループ/マスターフラグ (1=true)
     sort_order  INTEGER DEFAULT 0,
     created_at  TEXT DEFAULT (datetime('now')),
     updated_at  TEXT DEFAULT (datetime('now'))
@@ -244,6 +245,7 @@ def init_db(db_path=None):
             "ALTER TABLE projects ADD COLUMN start_date TEXT",
             "ALTER TABLE projects ADD COLUMN client_name TEXT",
             "ALTER TABLE projects ADD COLUMN manager_name TEXT",
+            "ALTER TABLE projects ADD COLUMN is_group INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(sql)
@@ -941,14 +943,15 @@ def get_project_by_id(project_id: int) -> dict:
 def insert_project(name: str, emoji: str = "", color: str = "#16213e",
                    description: str = "", sort_order: int = 0,
                    start_date: str = "", client_name: str = "",
-                   manager_name: str = "") -> int:
+                   manager_name: str = "", is_group: int = 0) -> int:
     with transaction() as conn:
         cur = conn.execute(
             "INSERT INTO projects (name, emoji, color, description, sort_order, "
-            "start_date, client_name, manager_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "start_date, client_name, manager_name, is_group) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (name, emoji, color, description, sort_order,
-             start_date or None, client_name or None, manager_name or None),
+             start_date or None, client_name or None, manager_name or None,
+             is_group),
         )
         return cur.lastrowid
 
@@ -956,15 +959,16 @@ def insert_project(name: str, emoji: str = "", color: str = "#16213e",
 def update_project(project_id: int, name: str, emoji: str, color: str,
                    description: str, status: str = "active",
                    sort_order: int = 0, start_date: str = "",
-                   client_name: str = "", manager_name: str = ""):
+                   client_name: str = "", manager_name: str = "",
+                   is_group: int = 0):
     with transaction() as conn:
         conn.execute(
             "UPDATE projects SET name=?, emoji=?, color=?, description=?, "
             "status=?, sort_order=?, start_date=?, client_name=?, manager_name=?, "
-            "updated_at=datetime('now') WHERE id=?",
+            "is_group=?, updated_at=datetime('now') WHERE id=?",
             (name, emoji, color, description, status, sort_order,
              start_date or None, client_name or None, manager_name or None,
-             project_id),
+             is_group, project_id),
         )
 
 

@@ -26,6 +26,7 @@ FILES = [
     # core/
     ("core/__init__.py", "core/__init__.py"),
     ("core/database.py", "core/database.py"),
+    ("core/projects.py", "core/projects.py"),
     # sync/
     ("sync/__init__.py", "sync/__init__.py"),
     ("sync/gdrive.py",   "sync/gdrive.py"),

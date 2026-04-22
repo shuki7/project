@@ -132,6 +132,11 @@
     <div class="lbl">スタッフ</div>
     <div class="sub">雇用情報・契約書・連絡先</div>
   </a>
+  <a href="{{ url_for('project.partners', project_id=project.id) }}" class="menu-tile">
+    <div class="ico">🤝</div>
+    <div class="lbl">取引相手別 経理</div>
+    <div class="sub">企業・個人別の枝分かれ管理</div>
+  </a>
   <a href="{{ url_for('web.job_dashboard') }}" class="menu-tile">
     <div class="ico">💰</div>
     <div class="lbl">経理ダッシュボード</div>

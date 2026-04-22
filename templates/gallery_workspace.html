@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}ギャラリー — {{ company_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  .photo-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    transition: transform 0.2s;
+    position: relative;
+  }
+  .photo-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  }
+  .photo-img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+    cursor: pointer;
+  }
+  .photo-info {
+    padding: 1rem;
+  }
+  .photo-label {
+    font-weight: 700;
+    color: #16213e;
+    margin-bottom: 0.2rem;
+    font-size: 0.95rem;
+  }
+  .photo-meta {
+    font-size: 0.75rem;
+    color: #888;
+  }
+  .badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    background: #e2c97e;
+    color: #16213e;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .upload-zone {
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 2.5rem;
+    text-align: center;
+    background: #f8f9fa;
+    margin-bottom: 2rem;
+    transition: border-color 0.2s;
+  }
+  .upload-zone:hover {
+    border-color: #3b82f6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🖼️ 写真・ギャラリー</h1>
+</div>
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="upload-zone">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+    <h3 style="margin-bottom: 0.5rem; color: #16213e;">新しい写真をアップロード</h3>
+    <p style="color: #888; font-size: 0.9rem; margin-bottom: 1.5rem;">社長の顔写真、会社の風景、集合写真など</p>
+    
+    <div style="max-width: 400px; margin: 0 auto; text-align: left;">
+        <div class="form-group">
+            <label>写真の種類 / メモ</label>
+            <select name="notes">
+                <option value="社長の顔写真">👤 社長の顔写真</option>
+                <option value="会社の外観・内装">🏢 会社の写真</option>
+                <option value="集合写真・風景">👨‍👩‍👧‍👦 集合写真・風景</option>
+                <option value="その他">📄 その他</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <input type="file" name="photo" accept="image/*" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">アップロード開始</button>
+    </div>
+  </form>
+
+  <h2 style="font-size: 1.1rem; color: #555; margin-bottom: 1.2rem; text-transform: uppercase;">保存済みの写真</h2>
+  
+  {% if photos %}
+  <div class="gallery-grid">
+    {% for p in photos %}
+    <div class="photo-card">
+      {% if p.notes %}
+      <div class="badge">{{ p.notes }}</div>
+      {% endif %}
+      <a href="{{ p.drive_url }}" target="_blank">
+        <img src="{{ p.drive_url }}" class="photo-img" onerror="this.src='https://via.placeholder.com/400x300?text=Image+in+Drive'">
+      </a>
+      <div class="photo-info">
+        <div class="photo-label">{{ p.filename }}</div>
+        <div class="photo-meta">{{ p.uploaded_at[:10] }}</div>
+        <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end;">
+            <form method="post" onsubmit="return confirm('削除しますか？')">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{ p.id }}">
+                <button type="submit" class="btn btn-edit btn-sm" style="color: #c1121f;">削除</button>
+            </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="text-align: center; color: #999; padding: 2rem;">まだ写真がありません。</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -37,6 +37,11 @@
       transition: background .15s, color .15s;
     }
     nav a.nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+    nav a.nav-link.active {
+      background: rgba(255,255,255,.15);
+      color: #e2c97e;
+      font-weight: 700;
+    }
     nav a.nav-link.back-btn {
       background: rgba(255,255,255,.12);
       font-weight: 700;
@@ -128,9 +133,9 @@
   <nav>
     <a class="nav-link back-btn" href="javascript:history.back()">← 戻る</a>
     <a class="nav-brand" href="{{ url_for('project.list_projects') }}">📁 プロジェクト管理</a>
-    <a class="nav-link" href="{{ url_for('project.list_projects') }}">一覧</a>
-    <a class="nav-link" href="{{ url_for('project.new_project') }}">＋ 新規追加</a>
-    <a class="nav-link" href="{{ url_for('project.url_list') }}">URL一覧</a>
+    <a class="nav-link {% if page == 'list' %}active{% endif %}" href="{{ url_for('project.list_projects') }}">一覧</a>
+    <a class="nav-link {% if page == 'new' %}active{% endif %}" href="{{ url_for('project.new_project') }}">＋ 新規追加</a>
+    <a class="nav-link {% if page == 'urls' %}active{% endif %}" href="{{ url_for('project.url_list') }}">URL一覧</a>
     <div class="spacer"></div>
     <a class="nav-link" href="{{ url_for('web.dashboard') }}">経理 (旧)</a>
     <a class="nav-link" href="{{ url_for('web.logout') }}">ログアウト</a>

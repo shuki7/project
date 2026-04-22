@@ -1,0 +1,123 @@
+{% extends "project/_base.html" %}
+{% block title %}取引相手の管理 — {{ project.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .partners-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .partner-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+    .partner-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 6px rgba(0,0,0,.09);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+        border-top: 4px solid var(--accent-color);
+        transition: transform .15s;
+    }
+    .partner-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    }
+    .partner-emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .partner-name { font-weight: 700; font-size: 1.1rem; text-align: center; color: #16213e; }
+    .partner-meta { font-size: 0.8rem; color: #888; margin-top: 0.5rem; }
+
+    .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 450px;
+        padding: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="partners-header">
+    <div>
+        <h1 style="font-size: 1.5rem; color: #16213e; margin-bottom: 0.2rem;">🤝 取引相手別の枝分かれ管理</h1>
+        <p style="color: #666; font-size: 0.9rem;">「{{ project.name }}」に関連する企業・個別の経理空間</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ 取引相手を追加</button>
+</div>
+
+<div class="partner-grid">
+    {% for p in partners %}
+    <a href="{{ url_for('web.select_project', project_id=p.id) }}" class="partner-card" style="--accent-color: {{ p.color }}">
+        <div class="partner-emoji">{{ p.emoji }}</div>
+        <div class="partner-name">{{ p.name }}</div>
+        <div class="partner-meta">経理・タスク管理へ移動 →</div>
+    </a>
+    {% else %}
+    <div style="grid-column: 1/-1; text-align: center; padding: 4rem; background: #f8f9fa; border-radius: 12px; border: 2px dashed #ddd;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+        <h3 style="color: #666;">まだ取引相手が登録されていません</h3>
+        <p style="color: #999; margin-bottom: 1.5rem;">プロジェクトを枝分かれさせて、個別の帳簿を作成しましょう。</p>
+        <button class="btn btn-sm btn-edit" onclick="openModal()">最初の取引相手を追加する</button>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="addPartnerModal" class="modal">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 1.5rem; color: #16213e;">新しい取引相手の追加</h2>
+        <form action="{{ url_for('project.partners_add', project_id=project.id) }}" method="POST">
+            <div class="form-group">
+                <label>取引相手名 (企業名・個人名)</label>
+                <input type="text" name="name" placeholder="例: 株式会社サクセス / 佐藤 秀樹" required>
+            </div>
+            <div class="form-group">
+                <label>絵文字 / アイコン</label>
+                <input type="text" name="emoji" value="🏢" required>
+            </div>
+            <div class="form-group">
+                <label>テーマカラー</label>
+                <input type="color" name="color" value="#3b82f6" style="height: 40px; padding: 2px; width: 100%;">
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn btn-edit" onclick="closeModal()">キャンセル</button>
+                <button type="submit" class="btn btn-primary">作成して枝分かれさせる</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal() {
+    document.getElementById('addPartnerModal').classList.add('active');
+}
+function closeModal() {
+    document.getElementById('addPartnerModal').classList.remove('active');
+}
+window.onclick = function(event) {
+    let modal = document.getElementById('addPartnerModal');
+    if (event.target == modal) closeModal();
+}
+</script>
+{% endblock %}
