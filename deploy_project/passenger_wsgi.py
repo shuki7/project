@@ -2,47 +2,44 @@ import sys
 import os
 import traceback
 
+# 初期化時のエラーをキャッチ
+init_error = None
+try:
+    _here = os.path.dirname(os.path.abspath(__file__))
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
+        
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    os.environ.setdefault("PYTHONUTF8", "1")
+
+    from main import application as _flask_app
+except BaseException:
+    init_error = traceback.format_exc()
+
 def application(environ, start_response):
+    if init_error:
+        # 初期化エラーがあればここで返す (まだ start_response は呼ばれていない)
+        start_response("200 OK", [("Content-type", "text/plain; charset=utf-8")])
+        msg = f"SSP Project - Initialization Error\nPython: {sys.version}\n\n{init_error}"
+        return [msg.encode("utf-8")]
+
     try:
-        # このファイルがあるディレクトリをパスに追加
-        _here = os.path.dirname(os.path.abspath(__file__))
-        if _here not in sys.path:
-            sys.path.insert(0, _here)
-            
-        # 文字コード設定
-        os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-        os.environ.setdefault("PYTHONUTF8", "1")
-
-        # mainモジュールの読み込み
-        try:
-            from main import application as _flask_app
-        except BaseException:
-            raise Exception("Failed to import main.py:\n" + traceback.format_exc())
-
-        # PATH_INFO 調整
         path = environ.get("PATH_INFO", "") or ""
         if path.startswith("/project"):
             environ["PATH_INFO"] = path[len("/project"):] or "/"
         environ["SCRIPT_NAME"] = "/project"
         
-        # Flask実行
-        result = _flask_app(environ, start_response)
-        return list(result)
-
-    except BaseException:
-        # 意図的に 200 OK を返すことで、LiteSpeed のカスタムエラー画面を回避してTracebackを表示させる
-        status = "200 OK"
-        response_headers = [("Content-type", "text/plain; charset=utf-8")]
-        start_response(status, response_headers)
+        # Flask に処理を委譲。Flask 内でのエラーは Flask 自身が処理するはず
+        return _flask_app(environ, start_response)
         
-        # 詳細なエラー情報を出力
-        error_info = [
-            "SSP Project - Critical Error\n",
-            "===========================\n",
-            "Python Version: " + sys.version + "\n",
-            "Current Path: " + os.getcwd() + "\n",
-            "System Path: " + str(sys.path) + "\n",
-            "Error Traceback:\n",
-            traceback.format_exc()
-        ]
-        return ["".join(error_info).encode("utf-8")]
+    except BaseException:
+        # リクエスト処理中の例外（Flask が処理しきれなかった非常事態）
+        # すでに start_response が呼ばれている可能性があるので、安全な方法をとる
+        err = traceback.format_exc()
+        try:
+            start_response("200 OK", [("Content-type", "text/plain; charset=utf-8")])
+        except BaseException:
+            pass # すでに呼ばれていた場合は無視
+        
+        msg = f"SSP Project - Runtime Error\nPython: {sys.version}\n\n{err}"
+        return [msg.encode("utf-8")]
