@@ -9,7 +9,7 @@
     box-shadow: 0 1px 6px rgba(0,0,0,.09);
     padding: 1.8rem;
     margin-bottom: 2rem;
-    border-top: 6px solid #16213e;
+    border-top: 6px solid {{ project_color or '#16213e' }};
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -66,59 +66,70 @@
   </div>
   <div>
     <h1>{{ company_name }}</h1>
-    <p>個別ワークスペースへようこそ。{% if president_photo %}社長の写真が登録されています。{% endif %}</p>
+    <p>個別ワークスペースへようこそ。すべての機能が利用可能です。</p>
   </div>
 </div>
 
 <h2 style="font-size: 1.1rem; color: #555; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">メニュー</h2>
 
 <div class="menu-grid">
-  <a href="{{ url_for('web.tasks') }}" class="menu-tile">
+  {# 統合された新しい機能セット (project_app.py) を使用 #}
+  {# パートナーDB内では自分自身が常に ID 1 として登録されています #}
+  
+  <a href="{{ url_for('project.tasks_list', project_id=1) }}" class="menu-tile">
     <div class="ico">✅</div>
-    <div class="lbl">{{ T.nav_tasks }}</div>
-    <div class="sub">未着手・進行中・完了・保留・却下</div>
+    <div class="lbl">タスク管理</div>
+    <div class="sub">進捗・優先度・カンバン形式</div>
   </a>
 
   <a href="{{ url_for('web.jobs') }}" class="menu-tile">
     <div class="ico">💎</div>
-    <div class="lbl">{{ T.nav_jobs }}</div>
+    <div class="lbl">案件利益</div>
     <div class="sub">案件ごとの売上・原価・利益</div>
   </a>
 
-  <a href="{{ url_for('web.contacts') }}" class="menu-tile">
-    <div class="ico">👥</div>
-    <div class="lbl">{{ T.nav_contacts }}</div>
-    <div class="sub">業者・顧客・連絡先</div>
-  </a>
-
-  <a href="{{ url_for('web.project_info') }}" class="menu-tile">
-    <div class="ico">📄</div>
-    <div class="lbl">{{ T.nav_info }}</div>
-    <div class="sub">住所・WiFi・銀行・契約書</div>
-  </a>
-
-  <a href="{{ url_for('web.staff') }}" class="menu-tile">
+  <a href="{{ url_for('project.staff_list', project_id=1) }}" class="menu-tile">
     <div class="ico">🧑‍💼</div>
-    <div class="lbl">{{ T.nav_staff }}</div>
-    <div class="sub">雇用情報・契約書・連絡先</div>
+    <div class="lbl">スタッフ管理</div>
+    <div class="sub">雇用情報・契約書・写真</div>
+  </a>
+
+  <a href="{{ url_for('project.info', project_id=1) }}" class="menu-tile">
+    <div class="ico">📄</div>
+    <div class="lbl">重要事項</div>
+    <div class="sub">住所・銀行・WiFi・契約（添付可）</div>
   </a>
 
   <a href="{{ url_for('web.job_dashboard') }}" class="menu-tile">
     <div class="ico">💰</div>
-    <div class="lbl">{{ T.nav_dashboard }}</div>
-    <div class="sub">月次収支・経費・売上（経理）</div>
+    <div class="lbl">経理ダッシュボード</div>
+    <div class="sub">収支・経費・売上</div>
+  </a>
+
+  <a href="{{ url_for('project.url_list_project', project_id=1) }}" class="menu-tile">
+    <div class="ico">🔗</div>
+    <div class="lbl">共有リンク</div>
+    <div class="sub">URL管理・共有</div>
   </a>
 
   <a href="{{ url_for('web.gallery') }}" class="menu-tile">
     <div class="ico">🖼️</div>
-    <div class="lbl">写真・ギャラリー</div>
-    <div class="sub">社長の顔写真、会社の風景など</div>
+    <div class="lbl">ギャラリー</div>
+    <div class="sub">写真・画像管理</div>
   </a>
 
-  <a href="{{ url_for('web.links') }}" class="menu-tile">
-    <div class="ico">🔗</div>
-    <div class="lbl">プロジェクト内リンク</div>
-    <div class="sub">HP・展開サービス・提供サービスのURL管理</div>
+  <a href="{{ url_for('web.receipt_ocr') }}" class="menu-tile">
+    <div class="ico">📸</div>
+    <div class="lbl">レシート解析</div>
+    <div class="sub">AIによる自動入力</div>
+  </a>
+
+  <a href="{{ url_for('project.partners', project_id=1) }}" class="menu-tile">
+    <div class="ico">🤝</div>
+    <div class="lbl">取引相手別プロジェクトを追加</div>
+    <div class="sub">子プロジェクトの作成・管理</div>
   </a>
 </div>
 {% endblock %}
+
+
