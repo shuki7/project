@@ -127,6 +127,21 @@ except Exception as e:
 
 
 
+@flask_app.errorhandler(Exception)
+def handle_exception(e):
+    # すべての未キャッチエラーを拾って、テキスト形式でブラウザに直接出力する
+    import traceback
+    err_msg = traceback.format_exc()
+    logger.error(f"Unhandled Exception: {err_msg}")
+    
+    # 意図的に 200 OK を返すことで LiteSpeed の 500 隠蔽をバイパスする
+    from flask import Response
+    return Response(
+        f"FLASK UNHANDLED ERROR:\n{err_msg}",
+        mimetype="text/plain",
+        status=200
+    )
+
 # ── ヘルスチェック ─────────────────────────────────────────
 @flask_app.route("/health")
 def health():
