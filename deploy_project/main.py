@@ -147,7 +147,7 @@ def handle_exception(e):
 def health():
     return "ok", 200
 
-    })
+
 
 
 # 注: ルート "/" は project_bp.list_projects がハンドル。
