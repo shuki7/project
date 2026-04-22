@@ -686,18 +686,50 @@ def staff_set_status(project_id, staff_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @project_bp.route("/urls", methods=["GET"], strict_slashes=False)
-def url_list():
-    """全プロジェクトの URL カテゴリ項目を集約して表示する。"""
+@project_bp.route("/<int:project_id>/urls", methods=["GET", "POST"], strict_slashes=False)
+def url_list_project(project_id):
+    """特定のプロジェクトの URL 一覧を管理する。"""
+    import json
+    import uuid
+    project = get_project_by_id(project_id)
+    if not project:
+        abort(404)
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "delete":
+            item_id = request.form.get("id")
+            delete_project_info_item(item_id)
+            flash("リンクを削除しました", "success")
+        else:
+            item_id = request.form.get("id") or str(uuid.uuid4())
+            label = request.form.get("label")
+            url = request.form.get("url")
+            fields_json = json.dumps({"url": url})
+            from core.database import insert_project_info_item, update_project_info_item
+            # 既存チェック
+            existing = get_project_info_item(item_id)
+            if existing:
+                update_project_info_item(item_id, label, fields_json)
+            else:
+                insert_project_info_item(item_id, project_id, "url", label, fields_json)
+            flash("リンクを保存しました", "success")
+        return redirect(url_for("project.url_list_project", project_id=project_id))
+
+    items = get_project_info_items(project_id, category="url")
+    return render_template("project/url_list.html", project=project, items=items, page="urls")
+
+
+@project_bp.route("/urls", methods=["GET"], strict_slashes=False)
+def url_list_all():
+    """（管理者用）全プロジェクトの URL カテゴリ項目を集約して表示する。"""
     projects = get_all_projects(include_archived=False)
     all_urls = []
     for p in projects:
         items = get_project_info_items(p["id"], category="url")
         if items:
-            all_urls.append({
-                "project": p,
-                "items": items
-            })
-    return render_template("project/url_list.html", all_urls=all_urls, page="urls")
+            all_urls.append({"project": p, "items": items})
+    return render_template("project/url_list_all.html", all_urls=all_urls, page="urls")
 
 
 # ─── スタッフに添付（Drive） ─────────────────────────────────────────────

@@ -142,10 +142,10 @@
     <div class="lbl">経理ダッシュボード</div>
     <div class="sub">月次収支・経費・売上</div>
   </a>
-  <div class="menu-tile disabled" title="Phase 5 で実装予定">
+  <a href="{{ url_for('project.url_list_project', project_id=project.id) }}" class="menu-tile">
     <div class="ico">🔗</div>
     <div class="lbl">共有リンク</div>
-    <div class="sub">投資家向け閲覧</div>
-  </div>
+    <div class="sub">プロジェクト関連のURL一覧</div>
+  </a>
 </div>
 {% endblock %}

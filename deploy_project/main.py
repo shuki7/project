@@ -114,13 +114,20 @@ def _auto_select_kakeibo_workspace():
         from flask import redirect as _redirect, url_for as _url_for
         return _redirect(_url_for("web.job_dashboard"))
 
+@flask_app.route("/")
+def index():
+    if not session.get("logged_in"):
+        return redirect(url_for("web.login"))
+    return redirect(url_for("web.launcher"))
+
+
 try:
     from project_app import project_bp
-    # プロジェクト管理は本体としてルートに配置（既存の url_prefix='/keiri/project' を上書き）
-    flask_app.register_blueprint(project_bp, url_prefix="")
-    logger.info("registered project blueprint at /")
+    # プロジェクト管理は内部機能として配置
+    flask_app.register_blueprint(project_bp, url_prefix="/mgmt")
+    logger.info("registered project blueprint at /mgmt")
 except Exception as e:
-    logger.error(f"failed to register project blueprint: {e}")
+    logger.error(f"failed to register web blueprint: {e}")
 
 
 # ── ヘルスチェック ─────────────────────────────────────────

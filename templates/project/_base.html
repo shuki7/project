@@ -132,7 +132,7 @@
 <body>
   <nav>
     <a class="nav-link back-btn" href="javascript:history.back()">← 戻る</a>
-    <a class="nav-brand" href="{{ url_for('project.list_projects') }}">📁 プロジェクト管理</a>
+    <a class="nav-brand" href="{{ url_for('web.launcher') }}">📁 プロジェクト管理</a>
     <a class="nav-link {% if page == 'list' %}active{% endif %}" href="{{ url_for('project.list_projects') }}">一覧</a>
     <a class="nav-link {% if page == 'new' %}active{% endif %}" href="{{ url_for('project.new_project') }}">＋ 新規追加</a>
     <a class="nav-link {% if page == 'urls' %}active{% endif %}" href="{{ url_for('project.url_list') }}">URL一覧</a>
