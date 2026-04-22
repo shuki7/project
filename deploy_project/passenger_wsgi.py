@@ -1,14 +1,14 @@
 import sys
 import os
 
+_here = os.path.dirname(os.path.abspath(__file__))
+if _here not in sys.path:
+    sys.path.insert(0, _here)
+
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+os.environ.setdefault("PYTHONUTF8", "1")
+
+from main import application as _flask_app
+
 def application(environ, start_response):
-    status = "200 OK"
-    response_headers = [("Content-type", "text/plain; charset=utf-8")]
-    start_response(status, response_headers)
-    
-    msg = (
-        "Hello from Passenger WSGI Test\n"
-        f"Python: {sys.version}\n"
-        "If you can see this, Passenger is working, and the issue is an OOM or Segfault in the main app."
-    )
-    return [msg.encode("utf-8")]
+    return _flask_app(environ, start_response)
