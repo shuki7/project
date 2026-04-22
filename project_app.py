@@ -38,7 +38,7 @@ from core.database import (
 )
 from translations import get_T
 
-project_bp = Blueprint("project", __name__, url_prefix="/keiri/project")
+project_bp = Blueprint("project", __name__)
 # LiteSpeed がトレーリングスラッシュを除去するためリダイレクトループ回避
 # → 各ルートに strict_slashes=False を付与する
 
