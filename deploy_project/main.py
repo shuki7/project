@@ -36,13 +36,13 @@ flask_app = Flask(__name__)
 flask_app.secret_key = os.getenv("SECRET_KEY", "project-secret-2026")
 
 # Blueprint 読込み（インポート時にエラーが出ても起動は続行）
-# try:
-#     from web_app import web
-#     # 経理は /keiri プレフィックスで再マウント（既存 web_app の内部ルートは "/" 起点）
-#     flask_app.register_blueprint(web, url_prefix="/keiri")
-#     logger.info("registered web blueprint at /keiri")
-# except Exception as e:
-#     logger.error(f"failed to register web blueprint: {e}")
+try:
+    from web_app import web
+    # 経理は /keiri プレフィックスで再マウント（既存 web_app の内部ルートは "/" 起点）
+    flask_app.register_blueprint(web, url_prefix="/keiri")
+    logger.info("registered web blueprint at /keiri")
+except Exception as e:
+    logger.error(f"failed to register web blueprint: {e}")
 
 
 # ── /keiri 用の自動プロジェクト選択（ワークスペース選択をバイパス） ──
@@ -59,30 +59,27 @@ def _load_projects_list():
     try:
         if PROJECTS_FILE.exists():
             with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-                data = _json.load(f)
-            if isinstance(data, list):
-                return data
+                return _json.load(f)
     except Exception as e:
-        logger.warning(f"_load_projects_list: {e}")
+        logger.error(f"failed to load projects: {e}")
     return []
 
 
-DEFAULT_WORKSPACE_NAME  = "🇮🇩BALI 🇯🇵JAPAN 🌎️DREAM"
-DEFAULT_WORKSPACE_EMOJI = ""   # 名前自体に絵文字を含むので別途絵文字なし
-
 def _ensure_kakeibo_workspace():
-    """DBの projects テーブルにある全プロジェクトを projects.json に同期し、
-    すべて「マスタープロジェクト」としてランチャーに表示されるようにする。"""
+    """/keiri 用のマスターワークスペース（id="1" 固定）がなければ作る。"""
     try:
         from core.projects import sync_master_projects
         sync_master_projects()
-        logger.info(f"synced projects to {PROJECTS_FILE}")
+        
+        from core.database import get_all_projects
+        all_projects = get_all_projects()
+        if not all_projects:
+            logger.warning("No projects found in DB.")
     except Exception as e:
-        logger.warning(f"_ensure_kakeibo_workspace: {e}")
-
+        logger.error(f"failed to ensure kakeibo workspace: {e}")
 
 # 起動時に 1 度実行
-# _ensure_kakeibo_workspace()
+_ensure_kakeibo_workspace()
 
 
 @flask_app.before_request

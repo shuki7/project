@@ -23,14 +23,18 @@ from config import (
     COURSE_KEYWORDS, REPORTS_DIR, PROJECTS_FILE, DB_PATH,
 )
 from flask import g
-try:
-    from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
-except ImportError:
-    parse_receipt_from_bytes = classify_category = compress_image = None
-try:
-    from sync.gdrive import upload_receipt_bytes
-except ImportError:
-    upload_receipt_bytes = None
+# try:
+#     from bot.ocr import parse_receipt_from_bytes, classify_category, compress_image
+# except ImportError:
+#     parse_receipt_from_bytes = classify_category = compress_image = None
+parse_receipt_from_bytes = classify_category = compress_image = None
+
+# try:
+#     from sync.gdrive import upload_receipt_bytes
+# except ImportError:
+#     upload_receipt_bytes = None
+upload_receipt_bytes = None
+
 from translations import get_T
 from core.database import (
     # カテゴリ
