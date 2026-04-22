@@ -40,7 +40,12 @@ else:
             if path.startswith("/project"):
                 environ["PATH_INFO"] = path[len("/project"):] or "/"
             environ["SCRIPT_NAME"] = "/project"
-            return _flask_app(environ, start_response)
+            
+            # Flask app を実行し、レスポンスを取得
+            result = _flask_app(environ, start_response)
+            # イテレータをリスト化して、レンダリング時のエラーもここで捕まえる
+            return list(result)
+            
         except Exception:
             import traceback
             status = "500 Internal Server Error"
